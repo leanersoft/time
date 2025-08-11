@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>Time Tracker</title>
+
+    <!-- Alpine.js -->
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"
+    ></script>
+
+    <!-- Dexie.js -->
+    <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dexie-export-import@4.0.7/dist/dexie-export-import.js"></script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /* Design Tokens */
+      :root {
+        /* Colors - Light Theme */
+        --color-bg: #ffffff;
+        --color-bg-secondary: #f8fafc;
+        --color-bg-tertiary: #f1f5f9;
+        --color-text: #0f172a;
+        --color-text-secondary: #475569;
+        --color-text-muted: #94a3b8;
+        --color-border: #e2e8f0;
+        --color-border-secondary: #cbd5e1;
+
+        --color-primary: #10b981;
+        --color-primary-hover: #059669;
+        --color-danger: #ef4444;
+        --color-danger-hover: #dc2626;
+        --color-warning: #f59e0b;
+
+        /* Activity Colors */
+        --color-work: #6366f1;
+        --color-break: #10b981;
+        --color-meeting: #f59e0b;
+        --color-personal: #ec4899;
+
+        /* Spacing */
+        --space-xs: 0.25rem;
+        --space-sm: 0.5rem;
+        --space-md: 1rem;
+        --space-lg: 1.5rem;
+        --space-xl: 2rem;
+        --space-2xl: 3rem;
+
+        /* Typography */
+        --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+        --font-mono: "JetBrains Mono", "SF Mono", monospace;
+
+        --text-xs: 0.75rem;
+        --text-sm: 0.875rem;
+        --text-base: 1rem;
+        --text-lg: 1.125rem;
+        --text-xl: 1.25rem;
+        --text-2xl: 1.5rem;
+        --text-3xl: 1.875rem;
+        --text-4xl: 2.25rem;
+        --text-5xl: 3rem;
+        --text-6xl: 3.75rem;
+
+        /* Border Radius */
+        --radius-sm: 0.25rem;
+        --radius-md: 0.5rem;
+        --radius-lg: 0.75rem;
+        --radius-xl: 1rem;
+        --radius-full: 9999px;
+
+        /* Shadows */
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+
+        /* Transitions */
+        --transition-fast: 100ms;
+        --transition-normal: 150ms;
+        --transition-slow: 300ms;
+      }
+
+      /* Dark Theme */
+      [data-theme="dark"] {
+        --color-bg: #0f172a;
+        --color-bg-secondary: #1e293b;
+        --color-bg-tertiary: #334155;
+        --color-text: #f8fafc;
+        --color-text-secondary: #cbd5e1;
+        --color-text-muted: #64748b;
+        --color-border: #334155;
+        --color-border-secondary: #475569;
+
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
+      }
+
+      /* Base Styles */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html {
+        font-family: var(--font-sans);
+        font-size: 16px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      body {
+        background: var(--color-bg);
+        color: var(--color-text);
+        min-height: 100vh;
+        transition: background-color var(--transition-normal);
+      }
+
+      /* Typography */
+      .text-xs {
+        font-size: var(--text-xs);
+      }
+      .text-sm {
+        font-size: var(--text-sm);
+      }
+      .text-base {
+        font-size: var(--text-base);
+      }
+      .text-lg {
+        font-size: var(--text-lg);
+      }
+      .text-xl {
+        font-size: var(--text-xl);
+      }
+      .text-2xl {
+        font-size: var(--text-2xl);
+      }
+      .text-3xl {
+        font-size: var(--text-3xl);
+      }
+      .text-4xl {
+        font-size: var(--text-4xl);
+      }
+      .text-5xl {
+        font-size: var(--text-5xl);
+      }
+      .text-6xl {
+        font-size: var(--text-6xl);
+      }
+
+      .font-normal {
+        font-weight: 400;
+      }
+      .font-medium {
+        font-weight: 500;
+      }
+      .font-semibold {
+        font-weight: 600;
+      }
+      .font-bold {
+        font-weight: 700;
+      }
+
+      .font-mono {
+        font-family: var(--font-mono);
+      }
+
+      .text-muted {
+        color: var(--color-text-muted);
+      }
+      .text-secondary {
+        color: var(--color-text-secondary);
+      }
+
+      /* Layout */
+      .container {
+        max-width: 48rem;
+        margin: 0 auto;
+        padding: var(--space-md);
+      }
+
+      .flex {
+        display: flex;
+      }
+      .flex-col {
+        flex-direction: column;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .justify-between {
+        justify-content: space-between;
+      }
+      .justify-center {
+        justify-content: center;
+      }
+      .gap-sm {
+        gap: var(--space-sm);
+      }
+      .gap-md {
+        gap: var(--space-md);
+      }
+      .gap-lg {
+        gap: var(--space-lg);
+      }
+
+      .grid {
+        display: grid;
+        gap: var(--space-md);
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      /* Components */
+      .btn {
+        padding: var(--space-sm) var(--space-lg);
+        border-radius: var(--radius-lg);
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: all var(--transition-normal);
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+        font-size: var(--text-base);
+        font-family: inherit;
+      }
+
+      .btn:active {
+        transform: scale(0.98);
+      }
+
+      .btn-primary {
+        background: var(--color-primary);
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: var(--color-primary-hover);
+      }
+
+      .btn-danger {
+        background: var(--color-danger);
+        color: white;
+      }
+
+      .btn-danger:hover {
+        background: var(--color-danger-hover);
+      }
+
+      .btn-secondary {
+        background: var(--color-bg-tertiary);
+        color: var(--color-text);
+      }
+
+      .btn-ghost {
+        background: transparent;
+        color: var(--color-text-secondary);
+        padding: var(--space-sm);
+      }
+
+      .btn-ghost:hover {
+        background: var(--color-bg-secondary);
+      }
+
+      /* Activity Bubbles */
+      .activity-bubble {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: var(--space-lg);
+        border-radius: var(--radius-xl);
+        background: var(--color-bg-secondary);
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: all var(--transition-normal);
+        min-height: 5rem;
+        position: relative;
+        touch-action: manipulation;
+      }
+
+      .activity-bubble:active {
+        transform: scale(0.95);
+      }
+
+      .activity-bubble.active {
+        border-color: var(--bubble-color);
+        background: var(--color-bg);
+        box-shadow: 0 0 0 4px rgba(var(--bubble-rgb), 0.1);
+      }
+
+      .activity-bubble.active::after {
+        content: "";
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        width: 0.5rem;
+        height: 0.5rem;
+        background: var(--bubble-color);
+        border-radius: var(--radius-full);
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+
+      .activity-icon {
+        font-size: var(--text-2xl);
+        margin-bottom: var(--space-xs);
+      }
+
+      .activity-label {
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--color-text-secondary);
+      }
+
+      .activity-duration {
+        font-size: var(--text-xs);
+        color: var(--color-text-muted);
+        font-family: var(--font-mono);
+      }
+
+      /* Timer Display */
+      .timer-display {
+        font-family: var(--font-mono);
+        font-size: var(--text-5xl);
+        font-weight: 500;
+        text-align: center;
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
+      }
+
+      @media (min-width: 640px) {
+        .timer-display {
+          font-size: var(--text-6xl);
+        }
+      }
+
+      /* Timeline */
+      .timeline {
+        position: relative;
+        padding: var(--space-lg) 0;
+      }
+
+      .timeline-entry {
+        display: flex;
+        align-items: stretch;
+        margin-bottom: var(--space-sm);
+        position: relative;
+      }
+
+      .timeline-time {
+        width: 4rem;
+        font-size: var(--text-sm);
+        color: var(--color-text-muted);
+        padding-right: var(--space-md);
+        text-align: right;
+        flex-shrink: 0;
+      }
+
+      .timeline-content {
+        flex: 1;
+        padding: var(--space-md);
+        background: var(--color-bg-secondary);
+        border-radius: var(--radius-lg);
+        border-left: 3px solid var(--entry-color, var(--color-border));
+        transition: all var(--transition-normal);
+      }
+
+      .timeline-content:hover {
+        background: var(--color-bg-tertiary);
+      }
+
+      .timeline-gap {
+        flex: 1;
+        padding: var(--space-md);
+        border: 2px dashed var(--color-border);
+        border-radius: var(--radius-lg);
+        text-align: center;
+        color: var(--color-text-muted);
+        cursor: pointer;
+        transition: all var(--transition-normal);
+      }
+
+      .timeline-gap:hover {
+        border-color: var(--color-border-secondary);
+        background: var(--color-bg-secondary);
+      }
+
+      /* Cards */
+      .card {
+        background: var(--color-bg-secondary);
+        border-radius: var(--radius-xl);
+        padding: var(--space-lg);
+        margin-bottom: var(--space-md);
+      }
+
+      /* Input */
+      .input {
+        width: 100%;
+        padding: var(--space-md);
+        background: var(--color-bg);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        font-size: var(--text-base);
+        color: var(--color-text);
+        font-family: inherit;
+        transition: all var(--transition-normal);
+      }
+
+      .input:focus {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+      }
+
+      .textarea {
+        resize: vertical;
+        min-height: 4rem;
+        font-family: inherit;
+      }
+
+      /* Navigation */
+      .nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--color-bg);
+        border-top: 1px solid var(--color-border);
+        z-index: 100;
+      }
+
+      .nav-content {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        max-width: 48rem;
+        margin: 0 auto;
+        padding: var(--space-sm) 0;
+      }
+
+      .nav-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: var(--space-sm);
+        cursor: pointer;
+        transition: all var(--transition-normal);
+        border-radius: var(--radius-lg);
+      }
+
+      .nav-item:hover {
+        background: var(--color-bg-secondary);
+      }
+
+      .nav-item.active {
+        color: var(--color-primary);
+      }
+
+      .nav-icon {
+        font-size: var(--text-xl);
+        margin-bottom: var(--space-xs);
+      }
+
+      .nav-label {
+        font-size: var(--text-xs);
+      }
+
+      /* Theme Toggle */
+      .theme-toggle {
+        position: fixed;
+        top: var(--space-md);
+        right: var(--space-md);
+        z-index: 1000;
+      }
+
+      /* Modals */
+      .modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        z-index: 1000;
+        padding: var(--space-md);
+      }
+
+      .modal-content {
+        background: var(--color-bg);
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        padding: var(--space-xl);
+        width: 100%;
+        max-width: 32rem;
+        max-height: 80vh;
+        overflow-y: auto;
+      }
+
+      @media (min-width: 640px) {
+        .modal {
+          align-items: center;
+        }
+
+        .modal-content {
+          border-radius: var(--radius-xl);
+        }
+      }
+
+      /* Stats */
+      .stat {
+        text-align: center;
+      }
+
+      .stat-value {
+        font-size: var(--text-3xl);
+        font-weight: 600;
+        font-family: var(--font-mono);
+      }
+
+      .stat-label {
+        font-size: var(--text-sm);
+        color: var(--color-text-muted);
+      }
+
+      /* Empty State */
+      .empty-state {
+        text-align: center;
+        padding: var(--space-2xl) var(--space-lg);
+        color: var(--color-text-muted);
+      }
+
+      .empty-icon {
+        font-size: var(--text-4xl);
+        margin-bottom: var(--space-md);
+        opacity: 0.5;
+      }
+
+      /* Utilities */
+      .mb-sm {
+        margin-bottom: var(--space-sm);
+      }
+      .mb-md {
+        margin-bottom: var(--space-md);
+      }
+      .mb-lg {
+        margin-bottom: var(--space-lg);
+      }
+      .mb-xl {
+        margin-bottom: var(--space-xl);
+      }
+
+      .text-center {
+        text-align: center;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      /* Responsive */
+      @media (min-width: 640px) {
+        .grid-sm-2 {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      /* Page specific styles */
+      .page {
+        padding-bottom: 5rem;
+      }
+
+      /* Animations */
+      @keyframes slideUp {
+        from {
+          transform: translateY(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      .slide-up {
+        animation: slideUp var(--transition-slow) ease-out;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app" x-data="timeTracker" x-init="init">
+      <!-- Theme Toggle -->
+      <div class="theme-toggle">
+        <button @click="toggleTheme" class="btn btn-ghost">
+          <span x-text="theme === 'dark' ? '☀️' : '🌙'"></span>
+        </button>
+      </div>
+
+      <!-- Pages -->
+      <div class="container page">
+        <!-- Timer Page -->
+        <div x-show="currentPage === 'timer'">
+          <!-- Header -->
+          <div class="text-center mb-xl">
+            <h1 class="text-2xl font-semibold mb-sm">
+              <span x-show="!currentActivity">What are you doing?</span>
+              <span
+                x-show="currentActivity"
+                x-text="currentActivity?.label"
+              ></span>
+            </h1>
+            <p class="text-secondary text-sm" x-show="currentActivity">
+              Started at <span x-text="formatTime(startTime)"></span>
+            </p>
+          </div>
+
+          <!-- Timer Display -->
+          <div class="timer-display mb-xl" x-text="displayTime">00:00:00</div>
+
+          <!-- Quick Activities -->
+          <div class="grid grid-2 mb-xl">
+            <template x-for="activity in activities" :key="activity.id">
+              <div
+                @click="toggleActivity(activity)"
+                class="activity-bubble"
+                :class="{ active: currentActivity?.id === activity.id }"
+                :style="`--bubble-color: ${activity.color}; --bubble-rgb: ${hexToRgb(activity.color)}`"
+              >
+                <div class="activity-icon" x-text="activity.icon"></div>
+                <div class="activity-label" x-text="activity.label"></div>
+                <div
+                  class="activity-duration"
+                  x-show="todayDurations[activity.id]"
+                >
+                  <span
+                    x-text="formatDuration(todayDurations[activity.id] || 0)"
+                  ></span>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Stop Button -->
+          <button
+            x-show="currentActivity"
+            @click="stopTracking"
+            class="btn btn-danger"
+            style="width: 100%"
+          >
+            Stop Tracking
+          </button>
+
+          <!-- Natural Language Input -->
+          <div class="card" style="margin-top: var(--space-xl)">
+            <h3 class="text-lg font-medium mb-md">Quick Add</h3>
+            <textarea
+              x-model="naturalInput"
+              @keydown.enter.meta.prevent="parseNaturalLanguage"
+              class="input textarea mb-md"
+              placeholder="e.g. worked 9-12, lunch 30min, meeting 2-3:30pm"
+            ></textarea>
+            <button @click="parseNaturalLanguage" class="btn btn-secondary">
+              Add Entries
+            </button>
+          </div>
+        </div>
+
+        <!-- Timeline Page -->
+        <div x-show="currentPage === 'timeline'" class="slide-up">
+          <h1 class="text-2xl font-semibold mb-lg">Today's Timeline</h1>
+
+          <div class="timeline">
+            <template x-if="todayEntries.length === 0">
+              <div class="empty-state">
+                <div class="empty-icon">📅</div>
+                <h3 class="text-lg font-medium mb-sm">No entries yet</h3>
+                <p class="text-sm">Start tracking to see your timeline</p>
+              </div>
+            </template>
+
+            <template x-for="(item, index) in timelineItems" :key="index">
+              <div class="timeline-entry">
+                <div class="timeline-time" x-text="item.timeLabel"></div>
+                <template x-if="item.type === 'entry'">
+                  <div
+                    class="timeline-content"
+                    :style="`--entry-color: ${item.entry.color}`"
+                    @click="editEntry(item.entry)"
+                  >
+                    <div class="font-medium" x-text="item.entry.activity"></div>
+                    <div class="text-sm text-secondary">
+                      <span
+                        x-text="formatDuration(item.entry.duration || 0)"
+                      ></span>
+                    </div>
+                  </div>
+                </template>
+                <template x-if="item.type === 'gap'">
+                  <div
+                    class="timeline-gap"
+                    @click="fillGap(item.start, item.end)"
+                  >
+                    <div class="text-sm">Tap to fill</div>
+                    <div
+                      class="text-xs"
+                      x-text="`${formatDuration(item.duration)}`"
+                    ></div>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Insights Page -->
+        <div x-show="currentPage === 'insights'" class="slide-up">
+          <h1 class="text-2xl font-semibold mb-lg">Today's Summary</h1>
+
+          <!-- Stats -->
+          <div class="grid grid-2 mb-xl">
+            <div class="stat">
+              <div class="stat-value" x-text="formatDuration(totalToday)"></div>
+              <div class="stat-label">Total Tracked</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value" x-text="todayEntries.length"></div>
+              <div class="stat-label">Entries</div>
+            </div>
+          </div>
+
+          <!-- Activity Breakdown -->
+          <div class="card">
+            <h3 class="text-lg font-medium mb-md">By Activity</h3>
+            <div class="flex flex-col gap-sm">
+              <template x-for="activity in activities" :key="activity.id">
+                <div
+                  x-show="todayDurations[activity.id] > 0"
+                  class="flex justify-between items-center"
+                >
+                  <div class="flex items-center gap-sm">
+                    <span x-text="activity.icon"></span>
+                    <span x-text="activity.label"></span>
+                  </div>
+                  <span
+                    class="font-mono font-medium"
+                    x-text="formatDuration(todayDurations[activity.id] || 0)"
+                  ></span>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Export -->
+          <div class="card">
+            <h3 class="text-lg font-medium mb-md">Export Data</h3>
+            <div class="flex flex-col gap-sm">
+              <button @click="exportDatabase" class="btn btn-secondary">
+                Export Database
+              </button>
+              <button @click="exportToday" class="btn btn-secondary">
+                Export Today (Markdown)
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Navigation -->
+      <nav class="nav">
+        <div class="nav-content">
+          <div
+            @click="currentPage = 'timer'"
+            class="nav-item"
+            :class="{ active: currentPage === 'timer' }"
+          >
+            <div class="nav-icon">⏱️</div>
+            <div class="nav-label">Timer</div>
+          </div>
+          <div
+            @click="currentPage = 'timeline'"
+            class="nav-item"
+            :class="{ active: currentPage === 'timeline' }"
+          >
+            <div class="nav-icon">📊</div>
+            <div class="nav-label">Timeline</div>
+          </div>
+          <div
+            @click="currentPage = 'insights'"
+            class="nav-item"
+            :class="{ active: currentPage === 'insights' }"
+          >
+            <div class="nav-icon">💡</div>
+            <div class="nav-label">Insights</div>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Fill Gap Modal -->
+      <div
+        x-show="showFillGapModal"
+        class="modal"
+        @click.self="showFillGapModal = false"
+      >
+        <div class="modal-content">
+          <h2 class="text-xl font-semibold mb-md">What were you doing?</h2>
+          <p class="text-sm text-secondary mb-lg">
+            <span x-text="formatTime(gapStart)"></span> -
+            <span x-text="formatTime(gapEnd)"></span> (<span
+              x-text="formatDuration((gapEnd - gapStart) / 1000)"
+            ></span
+            >)
+          </p>
+
+          <div class="grid grid-2 gap-sm">
+            <template x-for="activity in activities" :key="activity.id">
+              <button
+                @click="fillGapWithActivity(activity)"
+                class="btn btn-secondary"
+                :style="`border-left: 3px solid ${activity.color}`"
+              >
+                <span x-text="activity.icon"></span>
+                <span x-text="activity.label"></span>
+              </button>
+            </template>
+          </div>
+
+          <button
+            @click="showFillGapModal = false"
+            class="btn btn-ghost"
+            style="width: 100%; margin-top: var(--space-md)"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Database setup
+      const db = new Dexie("TimeTracker");
+      db.version(1).stores({
+        entries: "++id, date, startTime, endTime, activity, duration",
+        settings: "key, value",
+      });
+
+      // Alpine.js app
+      document.addEventListener("alpine:init", () => {
+        Alpine.data("timeTracker", () => ({
+          // State
+          currentPage: "timer",
+          theme: "light",
+          currentActivity: null,
+          startTime: null,
+          elapsed: 0,
+          interval: null,
+          naturalInput: "",
+          todayEntries: [],
+          showFillGapModal: false,
+          gapStart: null,
+          gapEnd: null,
+
+          // Predefined activities
+          activities: [
+            { id: "work", label: "Work", icon: "💼", color: "#6366f1" },
+            { id: "break", label: "Break", icon: "☕", color: "#10b981" },
+            { id: "meeting", label: "Meeting", icon: "👥", color: "#f59e0b" },
+            { id: "personal", label: "Personal", icon: "🏠", color: "#ec4899" },
+          ],
+
+          // Initialize
+          async init() {
+            // Load theme
+            const savedTheme =
+              localStorage.getItem("theme") ||
+              (window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light");
+            this.setTheme(savedTheme);
+
+            // Load today's entries
+            await this.loadTodayEntries();
+
+            // Check for running timer
+            const running = localStorage.getItem("runningTimer");
+            if (running) {
+              const data = JSON.parse(running);
+              this.currentActivity = this.activities.find(
+                (a) => a.id === data.activityId
+              );
+              this.startTime = new Date(data.startTime);
+              this.startInterval();
+            }
+          },
+
+          // Theme management
+          toggleTheme() {
+            this.setTheme(this.theme === "dark" ? "light" : "dark");
+          },
+
+          setTheme(theme) {
+            this.theme = theme;
+            document.documentElement.setAttribute("data-theme", theme);
+            localStorage.setItem("theme", theme);
+          },
+
+          // Timer display
+          get displayTime() {
+            const h = Math.floor(this.elapsed / 3600);
+            const m = Math.floor((this.elapsed % 3600) / 60);
+            const s = this.elapsed % 60;
+            return `${String(h).padStart(2, "0")}:${String(m).padStart(
+              2,
+              "0"
+            )}:${String(s).padStart(2, "0")}`;
+          },
+
+          // Today's durations by activity
+          get todayDurations() {
+            const durations = {};
+            this.activities.forEach((a) => (durations[a.id] = 0));
+
+            this.todayEntries.forEach((entry) => {
+              const activityId = this.activities.find(
+                (a) => a.label === entry.activity
+              )?.id;
+              if (activityId && entry.duration) {
+                durations[activityId] =
+                  (durations[activityId] || 0) + entry.duration;
+              }
+            });
+
+            // Add current tracking
+            if (this.currentActivity) {
+              durations[this.currentActivity.id] =
+                (durations[this.currentActivity.id] || 0) + this.elapsed;
+            }
+
+            return durations;
+          },
+
+          // Total time today
+          get totalToday() {
+            let total = this.todayEntries.reduce(
+              (sum, entry) => sum + (entry.duration || 0),
+              0
+            );
+            if (this.currentActivity) {
+              total += this.elapsed;
+            }
+            return total;
+          },
+
+          // Timeline items with gaps
+          get timelineItems() {
+            const items = [];
+            const sorted = [...this.todayEntries].sort(
+              (a, b) => a.startTime - b.startTime
+            );
+
+            // Start of day (8am)
+            const dayStart = new Date();
+            dayStart.setHours(8, 0, 0, 0);
+
+            if (sorted.length === 0) {
+              // No entries yet
+              const now = new Date();
+              if (now > dayStart) {
+                items.push({
+                  type: "gap",
+                  start: dayStart,
+                  end: now,
+                  duration: Math.floor((now - dayStart) / 1000),
+                  timeLabel: this.formatTime(dayStart),
+                });
+              }
+            } else {
+              // Check for gap at start of day
+              if (sorted[0].startTime > dayStart) {
+                items.push({
+                  type: "gap",
+                  start: dayStart,
+                  end: sorted[0].startTime,
+                  duration: Math.floor((sorted[0].startTime - dayStart) / 1000),
+                  timeLabel: this.formatTime(dayStart),
+                });
+              }
+
+              // Add entries and gaps between them
+              sorted.forEach((entry, index) => {
+                // Add the entry
+                items.push({
+                  type: "entry",
+                  entry: {
+                    ...entry,
+                    color:
+                      this.activities.find((a) => a.label === entry.activity)
+                        ?.color || "#94a3b8",
+                  },
+                  timeLabel: this.formatTime(entry.startTime),
+                });
+
+                // Check for gap after this entry
+                if (index < sorted.length - 1) {
+                  const nextEntry = sorted[index + 1];
+                  if (entry.endTime && nextEntry.startTime > entry.endTime) {
+                    const gapDuration = Math.floor(
+                      (nextEntry.startTime - entry.endTime) / 1000
+                    );
+                    if (gapDuration > 60) {
+                      // Only show gaps > 1 minute
+                      items.push({
+                        type: "gap",
+                        start: entry.endTime,
+                        end: nextEntry.startTime,
+                        duration: gapDuration,
+                        timeLabel: this.formatTime(entry.endTime),
+                      });
+                    }
+                  }
+                }
+              });
+
+              // Check for gap at end (to now)
+              const lastEntry = sorted[sorted.length - 1];
+              if (lastEntry.endTime && !this.currentActivity) {
+                const now = new Date();
+                const gapDuration = Math.floor(
+                  (now - lastEntry.endTime) / 1000
+                );
+                if (gapDuration > 60) {
+                  items.push({
+                    type: "gap",
+                    start: lastEntry.endTime,
+                    end: now,
+                    duration: gapDuration,
+                    timeLabel: this.formatTime(lastEntry.endTime),
+                  });
+                }
+              }
+            }
+
+            return items;
+          },
+
+          // Activity toggle
+          async toggleActivity(activity) {
+            if (this.currentActivity?.id === activity.id) {
+              // Stop current activity
+              await this.stopTracking();
+            } else {
+              // Stop current if any, then start new
+              if (this.currentActivity) {
+                await this.stopTracking();
+              }
+              await this.startTracking(activity);
+            }
+          },
+
+          // Start tracking
+          async startTracking(activity) {
+            this.currentActivity = activity;
+            this.startTime = new Date();
+            this.elapsed = 0;
+
+            // Save to localStorage for recovery
+            localStorage.setItem(
+              "runningTimer",
+              JSON.stringify({
+                activityId: activity.id,
+                startTime: this.startTime,
+              })
+            );
+
+            this.startInterval();
+          },
+
+          // Stop tracking
+          async stopTracking() {
+            if (!this.currentActivity) return;
+
+            const endTime = new Date();
+            const duration = Math.floor((endTime - this.startTime) / 1000);
+
+            // Save entry
+            await db.entries.add({
+              date: this.startTime.toDateString(),
+              startTime: this.startTime,
+              endTime: endTime,
+              activity: this.currentActivity.label,
+              duration: duration,
+            });
+
+            // Reset
+            this.currentActivity = null;
+            this.startTime = null;
+            this.elapsed = 0;
+            this.stopInterval();
+            localStorage.removeItem("runningTimer");
+
+            // Reload entries
+            await this.loadTodayEntries();
+          },
+
+          // Timer interval
+          startInterval() {
+            this.updateElapsed();
+            this.interval = setInterval(() => this.updateElapsed(), 1000);
+          },
+
+          stopInterval() {
+            if (this.interval) {
+              clearInterval(this.interval);
+              this.interval = null;
+            }
+          },
+
+          updateElapsed() {
+            if (this.startTime) {
+              this.elapsed = Math.floor((new Date() - this.startTime) / 1000);
+            }
+          },
+
+          // Natural language parsing
+          async parseNaturalLanguage() {
+            if (!this.naturalInput.trim()) return;
+
+            const lines = this.naturalInput
+              .split(",")
+              .map((line) => line.trim());
+            const today = new Date();
+
+            for (const line of lines) {
+              // Simple patterns: "work 9-12", "lunch 30min", "meeting 2-3:30pm"
+              let activity = null;
+              let startTime = null;
+              let endTime = null;
+              let duration = null;
+
+              // Find activity
+              for (const act of this.activities) {
+                if (line.toLowerCase().includes(act.label.toLowerCase())) {
+                  activity = act.label;
+                  break;
+                }
+              }
+
+              // Parse time range (e.g., "9-12", "2-3:30pm")
+              const rangeMatch = line.match(
+                /(\d{1,2}):?(\d{2})?\s*-\s*(\d{1,2}):?(\d{2})?\s*(am|pm)?/i
+              );
+              if (rangeMatch) {
+                let startHour = parseInt(rangeMatch[1]);
+                let startMin = parseInt(rangeMatch[2] || "0");
+                let endHour = parseInt(rangeMatch[3]);
+                let endMin = parseInt(rangeMatch[4] || "0");
+                const period = rangeMatch[5];
+
+                // Adjust for PM
+                if (period?.toLowerCase() === "pm") {
+                  if (endHour < 12) endHour += 12;
+                  if (startHour < endHour && startHour < 12) startHour += 12;
+                }
+
+                startTime = new Date(today);
+                startTime.setHours(startHour, startMin, 0, 0);
+
+                endTime = new Date(today);
+                endTime.setHours(endHour, endMin, 0, 0);
+
+                duration = Math.floor((endTime - startTime) / 1000);
+              }
+
+              // Parse duration (e.g., "30min", "1h", "1.5h")
+              const durationMatch = line.match(
+                /(\d+\.?\d*)\s*(h|hr|hour|m|min)/i
+              );
+              if (durationMatch && !rangeMatch) {
+                const value = parseFloat(durationMatch[1]);
+                const unit = durationMatch[2].toLowerCase();
+
+                if (unit.startsWith("h")) {
+                  duration = Math.floor(value * 3600);
+                } else {
+                  duration = Math.floor(value * 60);
+                }
+
+                // Assume it ended just now
+                endTime = new Date();
+                startTime = new Date(endTime.getTime() - duration * 1000);
+              }
+
+              // If we found something, add it
+              if (activity && duration) {
+                await db.entries.add({
+                  date: today.toDateString(),
+                  startTime: startTime,
+                  endTime: endTime,
+                  activity: activity,
+                  duration: duration,
+                });
+              }
+            }
+
+            // Clear input and reload
+            this.naturalInput = "";
+            await this.loadTodayEntries();
+          },
+
+          // Fill gap
+          fillGap(start, end) {
+            this.gapStart = start;
+            this.gapEnd = end;
+            this.showFillGapModal = true;
+          },
+
+          async fillGapWithActivity(activity) {
+            const duration = Math.floor((this.gapEnd - this.gapStart) / 1000);
+
+            await db.entries.add({
+              date: this.gapStart.toDateString(),
+              startTime: this.gapStart,
+              endTime: this.gapEnd,
+              activity: activity.label,
+              duration: duration,
+            });
+
+            this.showFillGapModal = false;
+            await this.loadTodayEntries();
+          },
+
+          // Load today's entries
+          async loadTodayEntries() {
+            const today = new Date().toDateString();
+            this.todayEntries = await db.entries
+              .where("date")
+              .equals(today)
+              .toArray();
+          },
+
+          // Edit entry (placeholder)
+          editEntry(entry) {
+            // Could implement edit modal here
+            console.log("Edit entry:", entry);
+          },
+
+          // Export functions
+          async exportDatabase() {
+            const blob = await db.export();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `timetracker-backup-${
+              new Date().toISOString().split("T")[0]
+            }.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+          },
+
+          async exportToday() {
+            const today = new Date().toDateString();
+            let markdown = `# Time Tracking - ${today}\n\n`;
+
+            markdown += `## Summary\n`;
+            markdown += `- Total tracked: ${this.formatDuration(
+              this.totalToday
+            )}\n`;
+            markdown += `- Entries: ${this.todayEntries.length}\n\n`;
+
+            markdown += `## By Activity\n`;
+            for (const activity of this.activities) {
+              const duration = this.todayDurations[activity.id];
+              if (duration > 0) {
+                markdown += `- ${activity.icon} ${
+                  activity.label
+                }: ${this.formatDuration(duration)}\n`;
+              }
+            }
+
+            markdown += `\n## Timeline\n`;
+            for (const entry of this.todayEntries.sort(
+              (a, b) => a.startTime - b.startTime
+            )) {
+              markdown += `- ${this.formatTime(
+                entry.startTime
+              )} - ${this.formatTime(entry.endTime)}: ${
+                entry.activity
+              } (${this.formatDuration(entry.duration)})\n`;
+            }
+
+            const blob = new Blob([markdown], { type: "text/markdown" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `timetracker-${today.replace(/\s/g, "-")}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+          },
+
+          // Formatting helpers
+          formatTime(date) {
+            if (!date) return "";
+            return new Date(date).toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+            });
+          },
+
+          formatDuration(seconds) {
+            if (seconds < 60) return `${seconds}s`;
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            return `${h}h${m > 0 ? " " + m + "m" : ""}`;
+          },
+
+          hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(
+              hex
+            );
+            return result
+              ? `${parseInt(result[1], 16)}, ${parseInt(
+                  result[2],
+                  16
+                )}, ${parseInt(result[3], 16)}`
+              : "0, 0, 0";
+          },
+        }));
+      });
+    </script>
+  </body>
+</html>
