@@ -687,7 +687,7 @@
               x-model="naturalInput"
               @keydown.enter.meta.prevent="parseNaturalLanguage"
               class="input textarea mb-md"
-              placeholder="e.g. worked 9-12, lunch 30min, meeting 2-3:30pm"
+              placeholder="e.g. worked 9-12, break 30min, meeting 2-3:30pm&#10;or: work 20m, break 10m, personal till 3pm"
             ></textarea>
             <button @click="parseNaturalLanguage" class="btn btn-secondary">
               Add Entries
@@ -714,7 +714,7 @@
                 <template x-if="item.type === 'entry'">
                   <div
                     class="timeline-content"
-                    :style="`--entry-color: ${item.entry.color}`"
+                    :style="`--entry-color: ${item.entry.color}; cursor: pointer;`"
                     @click="editEntry(item.entry)"
                   >
                     <div class="font-medium" x-text="item.entry.activity"></div>
@@ -722,6 +722,7 @@
                       <span
                         x-text="formatDuration(item.entry.duration || 0)"
                       ></span>
+                      <span class="text-xs text-muted"> • Click to edit</span>
                     </div>
                   </div>
                 </template>
@@ -841,7 +842,7 @@
             >)
           </p>
 
-          <div class="grid grid-2 gap-sm">
+          <div class="grid grid-2 gap-sm mb-md">
             <template x-for="activity in activities" :key="activity.id">
               <button
                 @click="fillGapWithActivity(activity)"
@@ -854,13 +855,95 @@
             </template>
           </div>
 
+          <!-- Natural language for gap -->
+          <div class="mb-md">
+            <input
+              type="text"
+              x-model="gapNaturalInput"
+              @keydown.enter="fillGapNatural"
+              class="input"
+              placeholder="e.g. work 30m, break, personal 15m"
+            />
+          </div>
+
           <button
             @click="showFillGapModal = false"
             class="btn btn-ghost"
-            style="width: 100%; margin-top: var(--space-md)"
+            style="width: 100%"
           >
             Cancel
           </button>
+        </div>
+      </div>
+
+      <!-- Edit Entry Modal -->
+      <div
+        x-show="showEditModal"
+        class="modal"
+        @click.self="showEditModal = false"
+      >
+        <div class="modal-content">
+          <h2 class="text-xl font-semibold mb-md">Edit Entry</h2>
+          <div class="mb-md">
+            <p class="text-sm text-secondary mb-sm">
+              <span x-text="editingEntry?.activity"></span>
+            </p>
+            <div class="grid grid-2 gap-sm mb-md">
+              <div>
+                <label class="text-sm text-muted">Start Time</label>
+                <input type="time" x-model="editStartTime" class="input" />
+              </div>
+              <div>
+                <label class="text-sm text-muted">End Time</label>
+                <input type="time" x-model="editEndTime" class="input" />
+              </div>
+            </div>
+
+            <!-- Quick adjust buttons -->
+            <div class="text-center mb-md">
+              <p class="text-sm text-muted mb-sm">Quick Adjust Duration</p>
+              <div class="flex justify-center gap-sm">
+                <button @click="adjustEntry(-10)" class="btn btn-secondary">
+                  -10m
+                </button>
+                <button @click="adjustEntry(-5)" class="btn btn-secondary">
+                  -5m
+                </button>
+                <button @click="adjustEntry(5)" class="btn btn-secondary">
+                  +5m
+                </button>
+                <button @click="adjustEntry(10)" class="btn btn-secondary">
+                  +10m
+                </button>
+              </div>
+            </div>
+
+            <!-- Natural language edit -->
+            <div class="mb-md">
+              <label class="text-sm text-muted">Or type naturally</label>
+              <input
+                type="text"
+                x-model="editNaturalInput"
+                @keydown.enter="updateEntryNatural"
+                class="input"
+                placeholder="e.g. 9:30-10:45 or 45 minutes"
+              />
+            </div>
+          </div>
+
+          <div class="flex gap-sm">
+            <button
+              @click="updateEntry"
+              class="btn btn-primary"
+              style="flex: 1"
+            >
+              Save Changes
+            </button>
+            <button @click="deleteEntry" class="btn btn-danger">Delete</button>
+            <button @click="showEditModal = false" class="btn btn-ghost">
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -886,15 +969,45 @@
           naturalInput: "",
           todayEntries: [],
           showFillGapModal: false,
+          showEditModal: false,
           gapStart: null,
           gapEnd: null,
+          gapNaturalInput: "",
+          editingEntry: null,
+          editStartTime: "",
+          editEndTime: "",
+          editNaturalInput: "",
 
-          // Predefined activities
+          // Predefined activities with aliases
           activities: [
-            { id: "work", label: "Work", icon: "💼", color: "#6366f1" },
-            { id: "break", label: "Break", icon: "☕", color: "#10b981" },
-            { id: "meeting", label: "Meeting", icon: "👥", color: "#f59e0b" },
-            { id: "personal", label: "Personal", icon: "🏠", color: "#ec4899" },
+            {
+              id: "work",
+              label: "Work",
+              icon: "💼",
+              color: "#6366f1",
+              aliases: ["working", "worked", "coding", "code"],
+            },
+            {
+              id: "break",
+              label: "Break",
+              icon: "☕",
+              color: "#10b981",
+              aliases: ["lunch", "coffee", "rest", "pause"],
+            },
+            {
+              id: "meeting",
+              label: "Meeting",
+              icon: "👥",
+              color: "#f59e0b",
+              aliases: ["call", "standup", "sync"],
+            },
+            {
+              id: "personal",
+              label: "Personal",
+              icon: "🏠",
+              color: "#ec4899",
+              aliases: ["home", "family", "private"],
+            },
           ],
 
           // Initialize
@@ -1072,6 +1185,20 @@
             return items;
           },
 
+          // Find activity by name or alias
+          findActivity(text) {
+            const lower = text.toLowerCase();
+            for (const activity of this.activities) {
+              if (
+                activity.label.toLowerCase() === lower ||
+                activity.aliases?.some((alias) => lower.includes(alias))
+              ) {
+                return activity;
+              }
+            }
+            return null;
+          },
+
           // Activity toggle
           async toggleActivity(activity) {
             if (this.currentActivity?.id === activity.id) {
@@ -1112,7 +1239,7 @@
             const duration = Math.floor((endTime - this.startTime) / 1000);
 
             // Save entry
-            await db.entries.add({
+            await this.addEntry({
               date: this.startTime.toDateString(),
               startTime: this.startTime,
               endTime: endTime,
@@ -1150,7 +1277,7 @@
             }
           },
 
-          // Natural language parsing
+          // Advanced natural language parsing
           async parseNaturalLanguage() {
             if (!this.naturalInput.trim()) return;
 
@@ -1158,77 +1285,58 @@
               .split(",")
               .map((line) => line.trim());
             const today = new Date();
+            const entries = [];
+            let lastEndTime = null;
 
-            for (const line of lines) {
-              // Simple patterns: "work 9-12", "lunch 30min", "meeting 2-3:30pm"
-              let activity = null;
-              let startTime = null;
-              let endTime = null;
-              let duration = null;
-
-              // Find activity
-              for (const act of this.activities) {
-                if (line.toLowerCase().includes(act.label.toLowerCase())) {
-                  activity = act.label;
-                  break;
-                }
-              }
-
-              // Parse time range (e.g., "9-12", "2-3:30pm")
-              const rangeMatch = line.match(
-                /(\d{1,2}):?(\d{2})?\s*-\s*(\d{1,2}):?(\d{2})?\s*(am|pm)?/i
+            // Check if all entries are durations only
+            const allDurations = lines.every((line) => {
+              return (
+                !line.match(/\d{1,2}:?\d{0,2}\s*-\s*\d{1,2}:?\d{0,2}/) &&
+                !line.match(/till|until|to\s+\d/i) &&
+                line.match(/\d+\s*(h|hr|hour|m|min)/i)
               );
-              if (rangeMatch) {
-                let startHour = parseInt(rangeMatch[1]);
-                let startMin = parseInt(rangeMatch[2] || "0");
-                let endHour = parseInt(rangeMatch[3]);
-                let endMin = parseInt(rangeMatch[4] || "0");
-                const period = rangeMatch[5];
+            });
 
-                // Adjust for PM
-                if (period?.toLowerCase() === "pm") {
-                  if (endHour < 12) endHour += 12;
-                  if (startHour < endHour && startHour < 12) startHour += 12;
+            if (allDurations) {
+              // Stack durations backward from now
+              const now = new Date();
+              let currentTime = now;
+
+              // Process in reverse to stack backward from now
+              for (let i = lines.length - 1; i >= 0; i--) {
+                const line = lines[i];
+                const parsed = this.parseSingleEntry(line, today, lastEndTime);
+                if (parsed) {
+                  // It's a duration
+                  const endTime = new Date(currentTime);
+                  const startTime = new Date(
+                    endTime.getTime() - parsed.duration * 1000
+                  );
+
+                  entries.unshift({
+                    ...parsed,
+                    startTime,
+                    endTime,
+                    duration: parsed.duration,
+                  });
+
+                  currentTime = startTime;
                 }
-
-                startTime = new Date(today);
-                startTime.setHours(startHour, startMin, 0, 0);
-
-                endTime = new Date(today);
-                endTime.setHours(endHour, endMin, 0, 0);
-
-                duration = Math.floor((endTime - startTime) / 1000);
               }
-
-              // Parse duration (e.g., "30min", "1h", "1.5h")
-              const durationMatch = line.match(
-                /(\d+\.?\d*)\s*(h|hr|hour|m|min)/i
-              );
-              if (durationMatch && !rangeMatch) {
-                const value = parseFloat(durationMatch[1]);
-                const unit = durationMatch[2].toLowerCase();
-
-                if (unit.startsWith("h")) {
-                  duration = Math.floor(value * 3600);
-                } else {
-                  duration = Math.floor(value * 60);
+            } else {
+              // Process sequentially
+              for (const line of lines) {
+                const parsed = this.parseSingleEntry(line, today, lastEndTime);
+                if (parsed) {
+                  entries.push(parsed);
+                  lastEndTime = parsed.endTime;
                 }
-
-                // Assume it ended just now
-                endTime = new Date();
-                startTime = new Date(endTime.getTime() - duration * 1000);
               }
+            }
 
-              // If we found something, add it
-              if (activity && duration) {
-                await db.entries.add({
-                  date: today.toDateString(),
-                  startTime: startTime,
-                  endTime: endTime,
-                  activity: activity,
-                  duration: duration,
-                });
-              }
+            // Add all entries with overlap handling
+            for (const entry of entries) {
+              await this.addEntry(entry);
             }
 
             // Clear input and reload
@@ -1236,23 +1344,251 @@
             await this.loadTodayEntries();
           },
 
+          // Parse a single entry from natural language
+          parseSingleEntry(line, baseDate, previousEndTime) {
+            let activity = null;
+            let startTime = null;
+            let endTime = null;
+            let duration = null;
+
+            // Find activity
+            activity = this.findActivity(line);
+            if (!activity) {
+              // Default to first word as potential activity
+              const firstWord = line.split(/\s+/)[0];
+              activity = this.findActivity(firstWord);
+            }
+
+            if (!activity) return null; // Can't determine activity
+
+            // Parse "till" or "until" patterns
+            const tillMatch = line.match(
+              /(?:till|until|to)\s+(\d{1,2}):?(\d{0,2})\s*(am|pm)?/i
+            );
+            if (tillMatch) {
+              // Start from previous end time or now
+              startTime = previousEndTime || new Date();
+
+              let endHour = parseInt(tillMatch[1]);
+              let endMin = parseInt(tillMatch[2] || "0");
+              const period = tillMatch[3];
+
+              if (period?.toLowerCase() === "pm" && endHour < 12) endHour += 12;
+
+              endTime = new Date(baseDate);
+              endTime.setHours(endHour, endMin, 0, 0);
+
+              duration = Math.floor((endTime - startTime) / 1000);
+            }
+
+            // Parse time range (e.g., "9-12", "2:30-3:45pm")
+            const rangeMatch = line.match(
+              /(\d{1,2}):?(\d{0,2})\s*-\s*(\d{1,2}):?(\d{0,2})\s*(am|pm)?/i
+            );
+            if (rangeMatch && !tillMatch) {
+              let startHour = parseInt(rangeMatch[1]);
+              let startMin = parseInt(rangeMatch[2] || "0");
+              let endHour = parseInt(rangeMatch[3]);
+              let endMin = parseInt(rangeMatch[4] || "0");
+              const period = rangeMatch[5];
+
+              // Adjust for PM
+              if (period?.toLowerCase() === "pm") {
+                if (endHour < 12) endHour += 12;
+                if (startHour < endHour && startHour < 12) startHour += 12;
+              }
+
+              startTime = new Date(baseDate);
+              startTime.setHours(startHour, startMin, 0, 0);
+
+              endTime = new Date(baseDate);
+              endTime.setHours(endHour, endMin, 0, 0);
+
+              duration = Math.floor((endTime - startTime) / 1000);
+            }
+
+            // Parse duration (e.g., "30min", "1h", "20m")
+            const durationMatch = line.match(
+              /(\d+\.?\d*)\s*(h|hr|hour|m|min)/i
+            );
+            if (durationMatch && !rangeMatch && !tillMatch) {
+              const value = parseFloat(durationMatch[1]);
+              const unit = durationMatch[2].toLowerCase();
+
+              if (unit.startsWith("h")) {
+                duration = Math.floor(value * 3600);
+              } else {
+                duration = Math.floor(value * 60);
+              }
+
+              if (previousEndTime) {
+                // Start from previous end time
+                startTime = new Date(previousEndTime);
+                endTime = new Date(startTime.getTime() + duration * 1000);
+              } else {
+                // Will be handled by the calling function
+                // For now, just return duration
+              }
+            }
+
+            // Return parsed entry
+            if ((startTime && endTime) || duration) {
+              return {
+                date: baseDate.toDateString(),
+                startTime: startTime,
+                endTime: endTime,
+                activity: activity.label,
+                duration: duration,
+              };
+            }
+
+            return null;
+          },
+
+          // Add entry with overlap handling
+          async addEntry(entry) {
+            // Check for overlaps
+            const overlapping = this.todayEntries.filter((existing) => {
+              if (!entry.startTime || !entry.endTime) return false;
+              return (
+                existing.startTime < entry.endTime &&
+                existing.endTime > entry.startTime
+              );
+            });
+
+            // Handle overlaps
+            for (const overlap of overlapping) {
+              if (
+                entry.startTime <= overlap.startTime &&
+                entry.endTime >= overlap.endTime
+              ) {
+                // New entry completely covers existing - delete existing
+                await db.entries.delete(overlap.id);
+              } else if (
+                entry.startTime > overlap.startTime &&
+                entry.endTime < overlap.endTime
+              ) {
+                // New entry splits existing - create two entries
+                await db.entries.update(overlap.id, {
+                  endTime: entry.startTime,
+                  duration: Math.floor(
+                    (entry.startTime - overlap.startTime) / 1000
+                  ),
+                });
+                await db.entries.add({
+                  ...overlap,
+                  id: undefined,
+                  startTime: entry.endTime,
+                  duration: Math.floor(
+                    (overlap.endTime - entry.endTime) / 1000
+                  ),
+                });
+              } else if (entry.startTime <= overlap.startTime) {
+                // New entry overlaps start - shrink existing
+                await db.entries.update(overlap.id, {
+                  startTime: entry.endTime,
+                  duration: Math.floor(
+                    (overlap.endTime - entry.endTime) / 1000
+                  ),
+                });
+              } else {
+                // New entry overlaps end - shrink existing
+                await db.entries.update(overlap.id, {
+                  endTime: entry.startTime,
+                  duration: Math.floor(
+                    (entry.startTime - overlap.startTime) / 1000
+                  ),
+                });
+              }
+            }
+
+            // Add the new entry
+            await db.entries.add(entry);
+            await this.loadTodayEntries();
+          },
+
           // Fill gap
           fillGap(start, end) {
             this.gapStart = start;
             this.gapEnd = end;
+            this.gapNaturalInput = "";
             this.showFillGapModal = true;
           },
 
           async fillGapWithActivity(activity) {
             const duration = Math.floor((this.gapEnd - this.gapStart) / 1000);
 
-            await db.entries.add({
+            await this.addEntry({
               date: this.gapStart.toDateString(),
               startTime: this.gapStart,
               endTime: this.gapEnd,
               activity: activity.label,
               duration: duration,
             });
+
+            this.showFillGapModal = false;
+            await this.loadTodayEntries();
+          },
+
+          // Fill gap with natural language
+          async fillGapNatural() {
+            if (!this.gapNaturalInput.trim()) return;
+
+            const lines = this.gapNaturalInput
+              .split(",")
+              .map((line) => line.trim());
+            const entries = [];
+            let currentTime = this.gapStart;
+            const gapDuration = (this.gapEnd - this.gapStart) / 1000;
+
+            // Parse all entries
+            for (const line of lines) {
+              const activity = this.findActivity(line);
+              if (!activity) continue;
+
+              const durationMatch = line.match(/(\d+)\s*(m|min|h|hr)?/i);
+              let duration = null;
+
+              if (durationMatch) {
+                const value = parseInt(durationMatch[1]);
+                const unit = durationMatch[2]?.toLowerCase() || "m";
+                duration = unit.startsWith("h") ? value * 3600 : value * 60;
+              }
+
+              entries.push({ activity: activity.label, duration });
+            }
+
+            // Distribute time
+            if (entries.length > 0) {
+              const specifiedDuration = entries.reduce(
+                (sum, e) => sum + (e.duration || 0),
+                0
+              );
+              const unspecifiedCount = entries.filter(
+                (e) => !e.duration
+              ).length;
+              const remainingTime = gapDuration - specifiedDuration;
+              const defaultDuration =
+                unspecifiedCount > 0 ? remainingTime / unspecifiedCount : 0;
+
+              for (const entry of entries) {
+                const duration = entry.duration || defaultDuration;
+                const startTime = new Date(currentTime);
+                const endTime = new Date(
+                  currentTime.getTime() + duration * 1000
+                );
+
+                await this.addEntry({
+                  date: startTime.toDateString(),
+                  startTime: startTime,
+                  endTime: endTime,
+                  activity: entry.activity,
+                  duration: duration,
+                });
+
+                currentTime = endTime;
+              }
+            }
 
             this.showFillGapModal = false;
             await this.loadTodayEntries();
@@ -1267,10 +1603,111 @@
               .toArray();
           },
 
-          // Edit entry (placeholder)
+          // Edit entry
           editEntry(entry) {
-            // Could implement edit modal here
-            console.log("Edit entry:", entry);
+            this.editingEntry = entry;
+            this.editStartTime = this.formatTimeForInput(entry.startTime);
+            this.editEndTime = this.formatTimeForInput(entry.endTime);
+            this.editNaturalInput = "";
+            this.showEditModal = true;
+          },
+
+          // Format time for input[type=time]
+          formatTimeForInput(date) {
+            if (!date) return "";
+            const d = new Date(date);
+            const hours = String(d.getHours()).padStart(2, "0");
+            const minutes = String(d.getMinutes()).padStart(2, "0");
+            return `${hours}:${minutes}`;
+          },
+
+          // Adjust entry duration
+          adjustEntry(minutes) {
+            if (!this.editingEntry) return;
+
+            const start = new Date(this.editingEntry.startTime);
+            const end = new Date(this.editingEntry.endTime);
+            end.setMinutes(end.getMinutes() + minutes);
+
+            this.editEndTime = this.formatTimeForInput(end);
+          },
+
+          // Update entry from natural language
+          async updateEntryNatural() {
+            if (!this.editNaturalInput.trim() || !this.editingEntry) return;
+
+            const input = this.editNaturalInput.trim();
+
+            // Parse time range
+            const rangeMatch = input.match(
+              /(\d{1,2}):?(\d{0,2})\s*-\s*(\d{1,2}):?(\d{0,2})/
+            );
+            if (rangeMatch) {
+              const startHour = parseInt(rangeMatch[1]);
+              const startMin = parseInt(rangeMatch[2] || "0");
+              const endHour = parseInt(rangeMatch[3]);
+              const endMin = parseInt(rangeMatch[4] || "0");
+
+              this.editStartTime = `${String(startHour).padStart(
+                2,
+                "0"
+              )}:${String(startMin).padStart(2, "0")}`;
+              this.editEndTime = `${String(endHour).padStart(2, "0")}:${String(
+                endMin
+              ).padStart(2, "0")}`;
+            }
+
+            // Parse duration
+            const durationMatch = input.match(/(\d+)\s*(m|min|h|hour)/i);
+            if (durationMatch && !rangeMatch) {
+              const value = parseInt(durationMatch[1]);
+              const unit = durationMatch[2].toLowerCase();
+              const minutes = unit.startsWith("h") ? value * 60 : value;
+
+              const start = new Date(this.editingEntry.startTime);
+              const end = new Date(start.getTime() + minutes * 60 * 1000);
+              this.editEndTime = this.formatTimeForInput(end);
+            }
+
+            await this.updateEntry();
+          },
+
+          // Update entry
+          async updateEntry() {
+            if (!this.editingEntry) return;
+
+            const [startHour, startMin] = this.editStartTime
+              .split(":")
+              .map(Number);
+            const [endHour, endMin] = this.editEndTime.split(":").map(Number);
+
+            const startTime = new Date(this.editingEntry.startTime);
+            startTime.setHours(startHour, startMin, 0, 0);
+
+            const endTime = new Date(this.editingEntry.endTime);
+            endTime.setHours(endHour, endMin, 0, 0);
+
+            const duration = Math.floor((endTime - startTime) / 1000);
+
+            await db.entries.update(this.editingEntry.id, {
+              startTime: startTime,
+              endTime: endTime,
+              duration: duration,
+            });
+
+            this.showEditModal = false;
+            await this.loadTodayEntries();
+          },
+
+          // Delete entry
+          async deleteEntry() {
+            if (!this.editingEntry) return;
+
+            if (confirm("Delete this entry?")) {
+              await db.entries.delete(this.editingEntry.id);
+              this.showEditModal = false;
+              await this.loadTodayEntries();
+            }
           },
 
           // Export functions
