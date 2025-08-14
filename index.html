@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- Vite HMR (dev only) -->
+
     <meta charset="UTF-8" />
     <meta
       name="viewport"
@@ -8,1791 +10,1191 @@
     />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <title>Time Tracker</title>
+    <meta
+      name="description"
+      content="A mobile-first, offline-first time tracking application"
+    />
+    <title>Pragmatic Focus - Time Tracker</title>
 
-    <!-- Alpine.js -->
-    <script
-      defer
-      src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"
-    ></script>
+    <!-- Initial theme on <html> BEFORE paint (prevents FOUC and respects saved choice) -->
+    <script>
+      (function () {
+        try {
+          const saved = localStorage.getItem("theme"); // 'light' | 'dark'
+          const theme =
+            saved === "light" || saved === "dark"
+              ? saved
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+          document.documentElement.classList.toggle("dark", theme === "dark");
+        } catch (_) {}
+      })();
+    </script>
 
-    <!-- Dexie.js -->
-    <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dexie-export-import@4.0.7/dist/dexie-export-import.js"></script>
+    <!-- Hide UI until Alpine initializes -->
+    <style>
+      [x-cloak] {
+        display: none !important;
+      }
+    </style>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
       rel="stylesheet"
     />
-
-    <style>
-      /* Design Tokens */
-      :root {
-        /* Colors - Light Theme */
-        --color-bg: #ffffff;
-        --color-bg-secondary: #f8fafc;
-        --color-bg-tertiary: #f1f5f9;
-        --color-text: #0f172a;
-        --color-text-secondary: #475569;
-        --color-text-muted: #94a3b8;
-        --color-border: #e2e8f0;
-        --color-border-secondary: #cbd5e1;
-
-        --color-primary: #10b981;
-        --color-primary-hover: #059669;
-        --color-danger: #ef4444;
-        --color-danger-hover: #dc2626;
-        --color-warning: #f59e0b;
-
-        /* Activity Colors */
-        --color-work: #6366f1;
-        --color-break: #10b981;
-        --color-meeting: #f59e0b;
-        --color-personal: #ec4899;
-
-        /* Spacing */
-        --space-xs: 0.25rem;
-        --space-sm: 0.5rem;
-        --space-md: 1rem;
-        --space-lg: 1.5rem;
-        --space-xl: 2rem;
-        --space-2xl: 3rem;
-
-        /* Typography */
-        --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-        --font-mono: "JetBrains Mono", "SF Mono", monospace;
-
-        --text-xs: 0.75rem;
-        --text-sm: 0.875rem;
-        --text-base: 1rem;
-        --text-lg: 1.125rem;
-        --text-xl: 1.25rem;
-        --text-2xl: 1.5rem;
-        --text-3xl: 1.875rem;
-        --text-4xl: 2.25rem;
-        --text-5xl: 3rem;
-        --text-6xl: 3.75rem;
-
-        /* Border Radius */
-        --radius-sm: 0.25rem;
-        --radius-md: 0.5rem;
-        --radius-lg: 0.75rem;
-        --radius-xl: 1rem;
-        --radius-full: 9999px;
-
-        /* Shadows */
-        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-
-        /* Transitions */
-        --transition-fast: 100ms;
-        --transition-normal: 150ms;
-        --transition-slow: 300ms;
-      }
-
-      /* Dark Theme */
-      [data-theme="dark"] {
-        --color-bg: #0f172a;
-        --color-bg-secondary: #1e293b;
-        --color-bg-tertiary: #334155;
-        --color-text: #f8fafc;
-        --color-text-secondary: #cbd5e1;
-        --color-text-muted: #64748b;
-        --color-border: #334155;
-        --color-border-secondary: #475569;
-
-        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
-        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
-      }
-
-      /* Base Styles */
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      html {
-        font-family: var(--font-sans);
-        font-size: 16px;
-        line-height: 1.5;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        -webkit-tap-highlight-color: transparent;
-      }
-
-      body {
-        background: var(--color-bg);
-        color: var(--color-text);
-        min-height: 100vh;
-        transition: background-color var(--transition-normal);
-      }
-
-      /* Typography */
-      .text-xs {
-        font-size: var(--text-xs);
-      }
-      .text-sm {
-        font-size: var(--text-sm);
-      }
-      .text-base {
-        font-size: var(--text-base);
-      }
-      .text-lg {
-        font-size: var(--text-lg);
-      }
-      .text-xl {
-        font-size: var(--text-xl);
-      }
-      .text-2xl {
-        font-size: var(--text-2xl);
-      }
-      .text-3xl {
-        font-size: var(--text-3xl);
-      }
-      .text-4xl {
-        font-size: var(--text-4xl);
-      }
-      .text-5xl {
-        font-size: var(--text-5xl);
-      }
-      .text-6xl {
-        font-size: var(--text-6xl);
-      }
-
-      .font-normal {
-        font-weight: 400;
-      }
-      .font-medium {
-        font-weight: 500;
-      }
-      .font-semibold {
-        font-weight: 600;
-      }
-      .font-bold {
-        font-weight: 700;
-      }
-
-      .font-mono {
-        font-family: var(--font-mono);
-      }
-
-      .text-muted {
-        color: var(--color-text-muted);
-      }
-      .text-secondary {
-        color: var(--color-text-secondary);
-      }
-
-      /* Layout */
-      .container {
-        max-width: 48rem;
-        margin: 0 auto;
-        padding: var(--space-md);
-      }
-
-      .flex {
-        display: flex;
-      }
-      .flex-col {
-        flex-direction: column;
-      }
-      .items-center {
-        align-items: center;
-      }
-      .justify-between {
-        justify-content: space-between;
-      }
-      .justify-center {
-        justify-content: center;
-      }
-      .gap-sm {
-        gap: var(--space-sm);
-      }
-      .gap-md {
-        gap: var(--space-md);
-      }
-      .gap-lg {
-        gap: var(--space-lg);
-      }
-
-      .grid {
-        display: grid;
-        gap: var(--space-md);
-      }
-
-      .grid-2 {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      /* Components */
-      .btn {
-        padding: var(--space-sm) var(--space-lg);
-        border-radius: var(--radius-lg);
-        font-weight: 500;
-        border: none;
-        cursor: pointer;
-        transition: all var(--transition-normal);
-        user-select: none;
-        -webkit-tap-highlight-color: transparent;
-        touch-action: manipulation;
-        font-size: var(--text-base);
-        font-family: inherit;
-      }
-
-      .btn:active {
-        transform: scale(0.98);
-      }
-
-      .btn-primary {
-        background: var(--color-primary);
-        color: white;
-      }
-
-      .btn-primary:hover {
-        background: var(--color-primary-hover);
-      }
-
-      .btn-danger {
-        background: var(--color-danger);
-        color: white;
-      }
-
-      .btn-danger:hover {
-        background: var(--color-danger-hover);
-      }
-
-      .btn-secondary {
-        background: var(--color-bg-tertiary);
-        color: var(--color-text);
-      }
-
-      .btn-ghost {
-        background: transparent;
-        color: var(--color-text-secondary);
-        padding: var(--space-sm);
-      }
-
-      .btn-ghost:hover {
-        background: var(--color-bg-secondary);
-      }
-
-      /* Activity Bubbles */
-      .activity-bubble {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: var(--space-lg);
-        border-radius: var(--radius-xl);
-        background: var(--color-bg-secondary);
-        border: 2px solid transparent;
-        cursor: pointer;
-        transition: all var(--transition-normal);
-        min-height: 5rem;
-        position: relative;
-        touch-action: manipulation;
-      }
-
-      .activity-bubble:active {
-        transform: scale(0.95);
-      }
-
-      .activity-bubble.active {
-        border-color: var(--bubble-color);
-        background: var(--color-bg);
-        box-shadow: 0 0 0 4px rgba(var(--bubble-rgb), 0.1);
-      }
-
-      .activity-bubble.active::after {
-        content: "";
-        position: absolute;
-        top: 0.5rem;
-        right: 0.5rem;
-        width: 0.5rem;
-        height: 0.5rem;
-        background: var(--bubble-color);
-        border-radius: var(--radius-full);
-        animation: pulse 2s infinite;
-      }
-
-      @keyframes pulse {
-        0%,
-        100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0.5;
-        }
-      }
-
-      .activity-icon {
-        font-size: var(--text-2xl);
-        margin-bottom: var(--space-xs);
-      }
-
-      .activity-label {
-        font-size: var(--text-sm);
-        font-weight: 500;
-        color: var(--color-text-secondary);
-      }
-
-      .activity-duration {
-        font-size: var(--text-xs);
-        color: var(--color-text-muted);
-        font-family: var(--font-mono);
-      }
-
-      /* Timer Display */
-      .timer-display {
-        font-family: var(--font-mono);
-        font-size: var(--text-5xl);
-        font-weight: 500;
-        text-align: center;
-        letter-spacing: -0.02em;
-        font-variant-numeric: tabular-nums;
-      }
-
-      @media (min-width: 640px) {
-        .timer-display {
-          font-size: var(--text-6xl);
-        }
-      }
-
-      /* Timeline */
-      .timeline {
-        position: relative;
-        padding: var(--space-lg) 0;
-      }
-
-      .timeline-entry {
-        display: flex;
-        align-items: stretch;
-        margin-bottom: var(--space-sm);
-        position: relative;
-      }
-
-      .timeline-time {
-        width: 4rem;
-        font-size: var(--text-sm);
-        color: var(--color-text-muted);
-        padding-right: var(--space-md);
-        text-align: right;
-        flex-shrink: 0;
-      }
-
-      .timeline-content {
-        flex: 1;
-        padding: var(--space-md);
-        background: var(--color-bg-secondary);
-        border-radius: var(--radius-lg);
-        border-left: 3px solid var(--entry-color, var(--color-border));
-        transition: all var(--transition-normal);
-      }
-
-      .timeline-content:hover {
-        background: var(--color-bg-tertiary);
-      }
-
-      .timeline-gap {
-        flex: 1;
-        padding: var(--space-md);
-        border: 2px dashed var(--color-border);
-        border-radius: var(--radius-lg);
-        text-align: center;
-        color: var(--color-text-muted);
-        cursor: pointer;
-        transition: all var(--transition-normal);
-      }
-
-      .timeline-gap:hover {
-        border-color: var(--color-border-secondary);
-        background: var(--color-bg-secondary);
-      }
-
-      /* Cards */
-      .card {
-        background: var(--color-bg-secondary);
-        border-radius: var(--radius-xl);
-        padding: var(--space-lg);
-        margin-bottom: var(--space-md);
-      }
-
-      /* Input */
-      .input {
-        width: 100%;
-        padding: var(--space-md);
-        background: var(--color-bg);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-lg);
-        font-size: var(--text-base);
-        color: var(--color-text);
-        font-family: inherit;
-        transition: all var(--transition-normal);
-      }
-
-      .input:focus {
-        outline: none;
-        border-color: var(--color-primary);
-        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-      }
-
-      .textarea {
-        resize: vertical;
-        min-height: 4rem;
-        font-family: inherit;
-      }
-
-      /* Navigation */
-      .nav {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: var(--color-bg);
-        border-top: 1px solid var(--color-border);
-        z-index: 100;
-      }
-
-      .nav-content {
-        display: flex;
-        justify-content: space-around;
-        align-items: center;
-        max-width: 48rem;
-        margin: 0 auto;
-        padding: var(--space-sm) 0;
-      }
-
-      .nav-item {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: var(--space-sm);
-        cursor: pointer;
-        transition: all var(--transition-normal);
-        border-radius: var(--radius-lg);
-      }
-
-      .nav-item:hover {
-        background: var(--color-bg-secondary);
-      }
-
-      .nav-item.active {
-        color: var(--color-primary);
-      }
-
-      .nav-icon {
-        font-size: var(--text-xl);
-        margin-bottom: var(--space-xs);
-      }
-
-      .nav-label {
-        font-size: var(--text-xs);
-      }
-
-      /* Theme Toggle */
-      .theme-toggle {
-        position: fixed;
-        top: var(--space-md);
-        right: var(--space-md);
-        z-index: 1000;
-      }
-
-      /* Modals */
-      .modal {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(4px);
-        display: flex;
-        align-items: flex-end;
-        justify-content: center;
-        z-index: 1000;
-        padding: var(--space-md);
-      }
-
-      .modal-content {
-        background: var(--color-bg);
-        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-        padding: var(--space-xl);
-        width: 100%;
-        max-width: 32rem;
-        max-height: 80vh;
-        overflow-y: auto;
-      }
-
-      @media (min-width: 640px) {
-        .modal {
-          align-items: center;
-        }
-
-        .modal-content {
-          border-radius: var(--radius-xl);
-        }
-      }
-
-      /* Stats */
-      .stat {
-        text-align: center;
-      }
-
-      .stat-value {
-        font-size: var(--text-3xl);
-        font-weight: 600;
-        font-family: var(--font-mono);
-      }
-
-      .stat-label {
-        font-size: var(--text-sm);
-        color: var(--color-text-muted);
-      }
-
-      /* Empty State */
-      .empty-state {
-        text-align: center;
-        padding: var(--space-2xl) var(--space-lg);
-        color: var(--color-text-muted);
-      }
-
-      .empty-icon {
-        font-size: var(--text-4xl);
-        margin-bottom: var(--space-md);
-        opacity: 0.5;
-      }
-
-      /* Utilities */
-      .mb-sm {
-        margin-bottom: var(--space-sm);
-      }
-      .mb-md {
-        margin-bottom: var(--space-md);
-      }
-      .mb-lg {
-        margin-bottom: var(--space-lg);
-      }
-      .mb-xl {
-        margin-bottom: var(--space-xl);
-      }
-
-      .text-center {
-        text-align: center;
-      }
-
-      .hidden {
-        display: none !important;
-      }
-
-      /* Responsive */
-      @media (min-width: 640px) {
-        .grid-sm-2 {
-          grid-template-columns: repeat(2, 1fr);
-        }
-      }
-
-      /* Page specific styles */
-      .page {
-        padding-bottom: 5rem;
-      }
-
-      /* Animations */
-      @keyframes slideUp {
-        from {
-          transform: translateY(100%);
-          opacity: 0;
-        }
-        to {
-          transform: translateY(0);
-          opacity: 1;
-        }
-      }
-
-      .slide-up {
-        animation: slideUp var(--transition-slow) ease-out;
-      }
-    </style>
+    <script type="module" crossorigin src="/assets/main-DmeASQMP.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/main-TCPcyR0v.css">
   </head>
-  <body>
-    <div id="app" x-data="timeTracker" x-init="init">
-      <!-- Theme Toggle -->
-      <div class="theme-toggle">
-        <button @click="toggleTheme" class="btn btn-ghost">
-          <span x-text="theme === 'dark' ? '☀️' : '🌙'"></span>
-        </button>
-      </div>
 
-      <!-- Pages -->
-      <div class="container page">
-        <!-- Timer Page -->
-        <div x-show="currentPage === 'timer'">
-          <!-- Header -->
-          <div class="text-center mb-xl">
-            <h1 class="text-2xl font-semibold mb-sm">
-              <span x-show="!currentActivity">What are you doing?</span>
-              <span
-                x-show="currentActivity"
-                x-text="currentActivity?.label"
-              ></span>
-            </h1>
-            <p class="text-secondary text-sm" x-show="currentActivity">
-              Started at <span x-text="formatTime(startTime)"></span>
-            </p>
-          </div>
-
-          <!-- Timer Display -->
-          <div class="timer-display mb-xl" x-text="displayTime">00:00:00</div>
-
-          <!-- Quick Activities -->
-          <div class="grid grid-2 mb-xl">
-            <template x-for="activity in activities" :key="activity.id">
-              <div
-                @click="toggleActivity(activity)"
-                class="activity-bubble"
-                :class="{ active: currentActivity?.id === activity.id }"
-                :style="`--bubble-color: ${activity.color}; --bubble-rgb: ${hexToRgb(activity.color)}`"
+  <body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+    <div id="app" x-data="appState" x-init="init" x-cloak class="min-h-screen">
+      <!-- Top Header -->
+      <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30">
+        <div class="container py-3 flex items-center justify-between">
+          <h1 class="text-lg font-semibold text-gray-900 dark:text-white">
+            <span x-show="currentPage === 'timer'">Timer</span>
+            <span x-show="currentPage === 'timeline'">Timeline</span>
+            <span x-show="currentPage === 'insights'">Insights</span>
+            <span x-show="currentPage === 'settings'">Settings</span>
+          </h1>
+          <button
+            @click="$store.theme.toggle()"
+            class="btn-icon bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            <span x-text="$store.theme.theme === 'dark' ? '☀️' : '🌙'"></span>
+          </button>
+        </div>
+        
+        <!-- Inline Notifications -->
+        <div x-data="notifications" x-init="init">
+          <template x-for="notification in visibleNotifications" :key="notification.id">
+            <div
+              x-show="notification"
+              x-transition:enter="transition ease-out duration-200"
+              x-transition:enter-start="opacity-0 transform -translate-y-2"
+              x-transition:enter-end="opacity-100 transform translate-y-0"
+              x-transition:leave="transition ease-in duration-150"
+              x-transition:leave-start="opacity-100 transform translate-y-0"
+              x-transition:leave-end="opacity-0 transform -translate-y-2"
+              class="mx-4 mb-2 px-3 py-2 rounded border text-xs flex items-center gap-2"
+              :class="getTypeClasses(notification.type)"
+            >
+              <span class="text-current font-medium" x-text="getTypeIcon(notification.type)"></span>
+              <span class="flex-1" x-text="notification.message"></span>
+              <button
+                @click="remove(notification.id)"
+                class="text-current opacity-50 hover:opacity-100 transition-opacity text-sm leading-none"
               >
-                <div class="activity-icon" x-text="activity.icon"></div>
-                <div class="activity-label" x-text="activity.label"></div>
-                <div
-                  class="activity-duration"
-                  x-show="todayDurations[activity.id]"
-                >
-                  <span
-                    x-text="formatDuration(todayDurations[activity.id] || 0)"
-                  ></span>
+                ×
+              </button>
+            </div>
+          </template>
+        </div>
+      </header>
+
+      <div class="pb-20">
+        <!-- Timer Page -->
+        <div x-show="currentPage === 'timer'" class="container py-6">
+          <!-- Parent timer component -->
+          <div x-data="timer" @toggle-activity="toggleActivity($event.detail)">
+            <!-- Page Title and Status -->
+            <div class="text-center mb-8">
+              <h2 
+                x-show="!currentActivity"
+                class="text-2xl font-semibold text-gray-900 dark:text-white mb-4"
+              >
+                What are you doing?
+              </h2>
+              <h2 
+                x-show="currentActivity"
+                class="text-2xl font-semibold text-gray-900 dark:text-white mb-2"
+                x-text="currentActivity?.label"
+              >
+              </h2>
+              <p
+                x-show="currentActivity"
+                class="text-gray-600 dark:text-gray-400 text-sm mb-4"
+              >
+                Started at <span x-text="formatStartTime()"></span>
+              </p>
+            </div>
+
+            <!-- Timer Display -->
+            <div class="text-center mb-8">
+              <div
+                class="text-5xl md:text-6xl font-mono font-medium text-gray-900 dark:text-white tracking-tight"
+                x-text="formatTime(elapsed)"
+              >
+                00:00:00
+              </div>
+              <!-- Subcategory indicator -->
+              <p 
+                x-show="currentSubcategory"
+                class="text-sm text-gray-600 dark:text-gray-400 mt-2"
+              >
+                <span x-text="currentSubcategory"></span>
+              </p>
+            </div>
+            
+            <!-- Subcategory Picker Modal -->
+            <div 
+              x-show="showSubcategoryPicker"
+              x-transition:enter="transition ease-out duration-200"
+              x-transition:enter-start="opacity-0 scale-95"
+              x-transition:enter-end="opacity-100 scale-100"
+              x-transition:leave="transition ease-in duration-150" 
+              x-transition:leave-start="opacity-100 scale-100"
+              x-transition:leave-end="opacity-0 scale-95"
+              class="mb-8"
+            >
+              <div class="card border-blue-200 dark:border-blue-700">
+                <div class="text-center mb-4">
+                  <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    Choose subcategory for 
+                    <span class="text-blue-600 dark:text-blue-400" x-text="currentActivity?.label"></span>
+                  </h3>
+                  <p class="text-sm text-gray-600 dark:text-gray-400">
+                    Select a specific activity or skip to use general category
+                  </p>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                  <template x-for="sub in currentActivity?.subcategories || []" :key="sub">
+                    <button
+                      @click="selectSubcategory(sub)"
+                      class="p-3 text-sm rounded-lg border transition-colors"
+                      :class="currentSubcategory === sub ? 
+                        'ring-1' : 
+                        'border-gray-200 dark:border-gray-700'"
+                      :style="currentSubcategory === sub ? 
+                        `border-color: ${currentActivity?.color}; ring-color: color-mix(in srgb, ${currentActivity?.color} 30%, transparent); background-color: color-mix(in srgb, ${currentActivity?.color} 8%, transparent)` :
+                        `--hover-border: ${currentActivity?.color}; --hover-bg: color-mix(in srgb, ${currentActivity?.color} 8%, transparent)`"
+                      @mouseenter="$event.target.style.borderColor = currentActivity?.color || '#6b7280'; $event.target.style.backgroundColor = `color-mix(in srgb, ${currentActivity?.color || '#6b7280'} 8%, transparent)`"
+                      @mouseleave="if (currentSubcategory !== sub) { $event.target.style.borderColor = ''; $event.target.style.backgroundColor = '' }"
+                    >
+                      <span x-text="sub" class="capitalize"></span>
+                    </button>
+                  </template>
+                </div>
+                
+                <div class="flex gap-2">
+                  <button
+                    @click="resetSubcategory()"
+                    class="btn-secondary flex-1"
+                  >
+                    Reset
+                  </button>
                 </div>
               </div>
-            </template>
-          </div>
+            </div>
 
-          <!-- Stop Button -->
-          <button
-            x-show="currentActivity"
-            @click="stopTracking"
-            class="btn btn-danger"
-            style="width: 100%"
-          >
-            Stop Tracking
-          </button>
+            <!-- Activity Bubbles (child component; no $parent) -->
+            <div
+              class="grid grid-cols-2 gap-4 mb-8"
+              x-data="activities(currentActivity?.id)"
+            >
+              <template x-for="activity in activities" :key="activity.id">
+                <div
+                  @click="handleActivityClick(activity)"
+                  @dblclick="handleActivityDoubleClick(activity)"
+                  class="activity-bubble relative group"
+                  :class="activity.id === currentActivity?.id ? 'activity-bubble-active' : 'activity-bubble-inactive'"
+                  :style="`--activity-color: ${activity.color}`"
+                >
+                  <!-- Color indicator -->
+                  <div 
+                    class="absolute top-2 right-2 w-4 h-4 rounded-full transition-opacity opacity-30 group-hover:opacity-70"
+                    :style="`background-color: ${activity.color}`"
+                  ></div>
+                  
+                  <div class="text-2xl mb-1" x-text="activity.icon"></div>
+                  <div
+                    class="font-medium text-sm text-gray-700 dark:text-gray-300"
+                    x-text="activity.label"
+                  ></div>
+                  <div
+                    x-show="todayDurations?.[activity.id] > 0"
+                    class="text-xs text-gray-500 dark:text-gray-400 font-mono mt-1"
+                    x-text="formatDurationFromSeconds(todayDurations?.[activity.id] || 0)"
+                  ></div>
+                </div>
+              </template>
+            </div>
 
-          <!-- Natural Language Input -->
-          <div class="card" style="margin-top: var(--space-xl)">
-            <h3 class="text-lg font-medium mb-md">Quick Add</h3>
-            <textarea
-              x-model="naturalInput"
-              @keydown.enter.meta.prevent="parseNaturalLanguage"
-              class="input textarea mb-md"
-              placeholder="e.g. worked 9-12, break 30min, meeting 2-3:30pm&#10;or: work 20m, break 10m, personal till 3pm"
-            ></textarea>
-            <button @click="parseNaturalLanguage" class="btn btn-secondary">
-              Add Entries
+            <!-- Stop Button -->
+            <button
+              x-show="currentActivity"
+              @click="stopTracking"
+              class="btn-danger w-full mb-6"
+            >
+              Stop Tracking
             </button>
+
+            <!-- Natural Language Input -->
+            <div class="card">
+              <h3
+                class="text-lg font-medium text-gray-900 dark:text-white mb-4"
+              >
+                Quick Add
+              </h3>
+              <textarea
+                id="natural-language-input"
+                name="naturalLanguageInput"
+                x-model="naturalInput"
+                @keydown.enter.meta.prevent="parseNaturalLanguage"
+                class="input mb-4"
+                rows="3"
+                placeholder="e.g. work 9-12, break 30min, meeting till 3pm&#10;or: 9-12 work, 30min break, till 3pm meeting&#10;or: work 20m, break 10m (stacked from now)"
+              ></textarea>
+              <button
+                @click="parseNaturalLanguage"
+                class="btn-secondary w-full"
+              >
+                Add Entries
+              </button>
+            </div>
           </div>
         </div>
 
         <!-- Timeline Page -->
-        <div x-show="currentPage === 'timeline'" class="slide-up">
-          <h1 class="text-2xl font-semibold mb-lg">Today's Timeline</h1>
-
-          <div class="timeline">
-            <template x-if="todayEntries.length === 0">
-              <div class="empty-state">
-                <div class="empty-icon">📅</div>
-                <h3 class="text-lg font-medium mb-sm">No entries yet</h3>
-                <p class="text-sm">Start tracking to see your timeline</p>
-              </div>
-            </template>
-
-            <template x-for="(item, index) in timelineItems" :key="index">
-              <div class="timeline-entry">
-                <div class="timeline-time" x-text="item.timeLabel"></div>
-                <template x-if="item.type === 'entry'">
-                  <div
-                    class="timeline-content"
-                    :style="`--entry-color: ${item.entry.color}; cursor: pointer;`"
-                    @click="editEntry(item.entry)"
+        <div x-show="currentPage === 'timeline'" class="container py-6">
+          <div x-data="timeline">
+            <!-- Period Selection -->
+            <div class="card mb-4">
+              <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    @click="selectPeriod('today')"
+                    class="btn-secondary text-sm"
+                    :class="{ 'bg-blue-600 text-white': selectedPeriod === 'today' }"
                   >
-                    <div class="font-medium" x-text="item.entry.activity"></div>
-                    <div class="text-sm text-secondary">
-                      <span
-                        x-text="formatDuration(item.entry.duration || 0)"
-                      ></span>
-                      <span class="text-xs text-muted"> • Click to edit</span>
+                    Today
+                  </button>
+                  <button
+                    @click="selectPeriod('week')"
+                    class="btn-secondary text-sm"
+                    :class="{ 'bg-blue-600 text-white': selectedPeriod === 'week' }"
+                  >
+                    Week
+                  </button>
+                  <button
+                    @click="selectPeriod('2-weeks')"
+                    class="btn-secondary text-sm"
+                    :class="{ 'bg-blue-600 text-white': selectedPeriod === '2-weeks' }"
+                  >
+                    2 Weeks
+                  </button>
+                  <button
+                    @click="selectPeriod('custom')"
+                    class="btn-secondary text-sm"
+                    :class="{ 'bg-blue-600 text-white': selectedPeriod === 'custom' }"
+                  >
+                    Custom
+                  </button>
+                </div>
+                
+                <!-- Custom Date Range -->
+                <div x-show="selectedPeriod === 'custom'" class="flex items-center gap-2 text-sm">
+                  <input
+                    type="date"
+                    x-model="customStartDate"
+                    class="input py-1 text-sm"
+                  />
+                  <span class="text-gray-500 dark:text-gray-400">to</span>
+                  <input
+                    type="date"
+                    x-model="customEndDate"
+                    class="input py-1 text-sm"
+                  />
+                  <button
+                    @click="applyCustomDateRange()"
+                    class="btn-primary text-sm"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Date Range Display -->
+              <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <p class="text-sm text-gray-500 dark:text-gray-400" x-text="dateRangeText"></p>
+              </div>
+            </div>
+
+            <!-- Summary Card -->
+            <div class="card mb-6">
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-3" x-text="periodLabel + ' Summary'"></h2>
+              <div class="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span class="text-gray-500 dark:text-gray-400">Total Tracked:</span>
+                  <span class="font-medium text-gray-900 dark:text-white ml-2" x-text="formatDuration(totalTime)"></span>
+                </div>
+                <div>
+                  <span class="text-gray-500 dark:text-gray-400">Entries:</span>
+                  <span class="font-medium text-gray-900 dark:text-white ml-2" x-text="entries.length"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Timeline -->
+            <div class="card">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Timeline</h2>
+                <button
+                  @click="exportTimeline()"
+                  class="btn-secondary text-sm"
+                  :disabled="entries.length === 0"
+                >
+                  📄 Export
+                </button>
+              </div>
+              
+              <!-- Empty State -->
+              <template x-if="entries.length === 0">
+                <div class="text-center py-12 text-gray-500 dark:text-gray-400">
+                  <div class="text-4xl mb-4">📅</div>
+                  <h3 class="text-lg font-medium mb-2">No entries yet</h3>
+                  <p class="text-sm">Start tracking to see your timeline</p>
+                </div>
+              </template>
+
+              <!-- Timeline Items -->
+              <div x-show="entries.length > 0" class="space-y-2">
+                <template x-for="(item, index) in timelineItems" :key="index">
+                  <div class="flex items-stretch">
+                    <!-- Time Label -->
+                    <div class="w-16 text-right pr-4 py-2 text-sm text-gray-500 dark:text-gray-400 font-mono flex-shrink-0" x-text="item.timeLabel"></div>
+                    
+                    <!-- Entry or Gap -->
+                    <div class="flex-1 min-w-0">
+                      <!-- Entry -->
+                      <template x-if="item.type === 'entry'">
+                        <div 
+                          class="bg-gray-100 dark:bg-gray-700 rounded-lg px-4 py-3 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border-l-4"
+                          :style="`border-left-color: ${getActivityColor(item.entry)}`"
+                          @click="editEntry(item.entry)"
+                        >
+                          <div class="flex items-center gap-2 mb-1">
+                            <span class="text-lg" x-text="getActivityIcon(item.entry)"></span>
+                            <span class="font-medium text-gray-900 dark:text-white" x-text="item.entry.description"></span>
+                          </div>
+                          <div class="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                            <span x-text="formatTime(item.entry.startTime) + ' - ' + (item.entry.endTime ? formatTime(item.entry.endTime) : 'ongoing')"></span>
+                            <span x-text="formatDuration(item.entry.duration || 0)"></span>
+                          </div>
+                        </div>
+                      </template>
+                      
+                      <!-- Gap -->
+                      <template x-if="item.type === 'gap'">
+                        <div 
+                          class="bg-gray-50 dark:bg-gray-800 rounded-lg px-4 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-l-4 border-dashed border-gray-300 dark:border-gray-600"
+                          @click="openFillGapModal(item)"
+                        >
+                          <div class="flex items-center gap-2 mb-1">
+                            <span class="text-lg">⏳</span>
+                            <span class="font-medium text-gray-500 dark:text-gray-400">Untracked time</span>
+                          </div>
+                          <div class="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                            <span x-text="formatTime(item.start) + ' - ' + formatTime(item.end)"></span>
+                            <span x-text="formatDuration(item.duration)"></span>
+                          </div>
+                        </div>
+                      </template>
                     </div>
                   </div>
                 </template>
-                <template x-if="item.type === 'gap'">
-                  <div
-                    class="timeline-gap"
-                    @click="fillGap(item.start, item.end)"
-                  >
-                    <div class="text-sm">Tap to fill</div>
-                    <div
-                      class="text-xs"
-                      x-text="`${formatDuration(item.duration)}`"
-                    ></div>
-                  </div>
-                </template>
               </div>
-            </template>
+            </div>
+
+            <!-- Fill Gap Modal -->
+            <div
+              x-show="showFillGapModal"
+              x-transition:enter="transition ease-out duration-200"
+              x-transition:enter-start="opacity-0"
+              x-transition:enter-end="opacity-100"
+              x-transition:leave="transition ease-in duration-150"
+              x-transition:leave-start="opacity-100"
+              x-transition:leave-end="opacity-0"
+              class="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-4"
+              @click.self="showFillGapModal = false"
+            >
+              <div
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 transform translate-y-4 sm:translate-y-0 sm:scale-95"
+                x-transition:enter-end="opacity-100 transform translate-y-0 sm:scale-100"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 transform translate-y-0 sm:scale-100"
+                x-transition:leave-end="opacity-0 transform translate-y-4 sm:translate-y-0 sm:scale-95"
+                class="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-screen overflow-y-auto"
+              >
+                <div class="p-6">
+                  <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">What were you doing?</h2>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                    <span x-text="gapStart ? formatTime(gapStart) : ''"></span> -
+                    <span x-text="gapEnd ? formatTime(gapEnd) : ''"></span>
+                    (<span x-text="gapStart && gapEnd ? formatDuration(Math.floor((gapEnd.getTime() - gapStart.getTime()) / 1000)) : ''"></span>)
+                  </p>
+
+                  <!-- Activity Buttons -->
+                  <div class="grid grid-cols-2 gap-3 mb-6">
+                    <template x-for="activity in ($store.activities?.all || [])" :key="activity.id">
+                      <button
+                        @click="fillGapWithActivity(activity)"
+                        class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg border-l-4 transition-colors text-left"
+                        :style="`border-left-color: ${activity.color}`"
+                      >
+                        <span class="text-lg" x-text="activity.icon"></span>
+                        <span class="font-medium text-gray-900 dark:text-white" x-text="activity.label"></span>
+                      </button>
+                    </template>
+                  </div>
+
+                  <!-- Natural Language Input -->
+                  <div class="mb-6">
+                    <input
+                      type="text"
+                      x-model="gapNaturalInput"
+                      @keydown.enter="fillGapNatural"
+                      class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                      placeholder="e.g. work, break, personal"
+                    />
+                  </div>
+
+                  <button
+                    @click="showFillGapModal = false"
+                    class="w-full py-3 px-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Edit Entry Modal -->
+            <div
+              x-show="showEditModal"
+              x-transition:enter="transition ease-out duration-200"
+              x-transition:enter-start="opacity-0"
+              x-transition:enter-end="opacity-100"
+              x-transition:leave="transition ease-in duration-150"
+              x-transition:leave-start="opacity-100"
+              x-transition:leave-end="opacity-0"
+              class="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-4"
+              @click.self="showEditModal = false"
+            >
+              <div
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 transform translate-y-4 sm:translate-y-0 sm:scale-95"
+                x-transition:enter-end="opacity-100 transform translate-y-0 sm:scale-100"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 transform translate-y-0 sm:scale-100"
+                x-transition:leave-end="opacity-0 transform translate-y-4 sm:translate-y-0 sm:scale-95"
+                class="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md max-h-screen overflow-y-auto"
+              >
+                <div class="p-6">
+                  <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Edit Entry</h2>
+                  <div class="mb-4">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                      <span x-text="editingEntry?.description"></span>
+                    </p>
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Start Time</label>
+                        <input 
+                          type="time" 
+                          x-model="editStartTime" 
+                          class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">End Time</label>
+                        <input 
+                          type="time" 
+                          x-model="editEndTime" 
+                          class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div class="flex gap-3">
+                      <button
+                        @click="saveEntry"
+                        class="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                      >
+                        Save Changes
+                      </button>
+                      <button
+                        @click="deleteEntry"
+                        class="py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                    
+                    <button
+                      @click="showEditModal = false"
+                      class="w-full mt-3 py-3 px-4 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- Insights Page -->
-        <div x-show="currentPage === 'insights'" class="slide-up">
-          <h1 class="text-2xl font-semibold mb-lg">Today's Summary</h1>
-
-          <!-- Stats -->
-          <div class="grid grid-2 mb-xl">
-            <div class="stat">
-              <div class="stat-value" x-text="formatDuration(totalToday)"></div>
-              <div class="stat-label">Total Tracked</div>
-            </div>
-            <div class="stat">
-              <div class="stat-value" x-text="todayEntries.length"></div>
-              <div class="stat-label">Entries</div>
-            </div>
-          </div>
-
-          <!-- Activity Breakdown -->
-          <div class="card">
-            <h3 class="text-lg font-medium mb-md">By Activity</h3>
-            <div class="flex flex-col gap-sm">
-              <template x-for="activity in activities" :key="activity.id">
-                <div
-                  x-show="todayDurations[activity.id] > 0"
-                  class="flex justify-between items-center"
+        <div x-show="currentPage === 'insights'" class="container py-6">
+          <div x-data="insights">
+            <!-- Time Period Filters -->
+            <div class="card mb-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                  Time Period
+                </h3>
+                <button
+                  @click="exportInsights()"
+                  class="btn-secondary text-sm"
+                  :disabled="!summary || loading"
                 >
-                  <div class="flex items-center gap-sm">
-                    <span x-text="activity.icon"></span>
-                    <span x-text="activity.label"></span>
-                  </div>
-                  <span
-                    class="font-mono font-medium"
-                    x-text="formatDuration(todayDurations[activity.id] || 0)"
-                  ></span>
+                  📄 Export Insights
+                </button>
+              </div>
+              <div class="flex flex-wrap gap-2 mb-4">
+                <button
+                  @click="selectPeriod('today')"
+                  :class="selectedPeriod === 'today' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'"
+                  class="px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Today
+                </button>
+                <button
+                  @click="selectPeriod('week')"
+                  :class="selectedPeriod === 'week' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'"
+                  class="px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  This Week
+                </button>
+                <button
+                  @click="selectPeriod('month')"
+                  :class="selectedPeriod === 'month' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'"
+                  class="px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  This Month
+                </button>
+                <button
+                  @click="selectPeriod('custom')"
+                  :class="selectedPeriod === 'custom' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'"
+                  class="px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Custom
+                </button>
+              </div>
+              
+              <!-- Custom Date Range -->
+              <div x-show="selectedPeriod === 'custom'" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    x-model="customStartDate"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
                 </div>
-              </template>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    x-model="customEndDate"
+                    @change="applyCustomDateRange()"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
 
-          <!-- Export -->
-          <div class="card">
-            <h3 class="text-lg font-medium mb-md">Export Data</h3>
-            <div class="flex flex-col gap-sm">
-              <button @click="exportDatabase" class="btn btn-secondary">
-                Export Database
-              </button>
-              <button @click="exportToday" class="btn btn-secondary">
-                Export Today (Markdown)
-              </button>
+            <!-- Loading State -->
+            <div x-show="loading" class="card mb-6">
+              <div class="text-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p class="text-gray-600 dark:text-gray-400">Loading insights...</p>
+              </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <template x-if="summary && !loading">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <!-- Total Tracked -->
+                <div class="card">
+                  <div class="text-center">
+                    <div class="text-2xl font-bold text-blue-600 dark:text-blue-400" x-text="formatDuration(summary.totalTracked)"></div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">Total Tracked</div>
+                  </div>
+                </div>
+                
+                <!-- Daily Average -->
+                <div class="card">
+                  <div class="text-center">
+                    <div class="text-2xl font-bold text-green-600 dark:text-green-400" x-text="formatDuration(summary.avgDailyTracking)"></div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">Daily Average</div>
+                  </div>
+                </div>
+                
+                <!-- Current Streak -->
+                <div class="card">
+                  <div class="text-center">
+                    <div class="text-2xl font-bold text-orange-600 dark:text-orange-400" x-text="summary.currentStreak + ' days'"></div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">Current Streak</div>
+                  </div>
+                </div>
+                
+                <!-- Active Days -->
+                <div class="card">
+                  <div class="text-center">
+                    <div class="text-2xl font-bold text-purple-600 dark:text-purple-400" x-text="summary.totalDays"></div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">Active Days</div>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- Activity Breakdown -->
+            <template x-if="activityStats.length > 0 && !loading">
+              <div class="card mb-6">
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                    Activity Breakdown
+                  </h3>
+                  <div class="text-sm text-gray-600 dark:text-gray-400">
+                    <span x-text="activityStats.length"></span> activities
+                  </div>
+                </div>
+                
+                <div class="space-y-4">
+                  <template x-for="activity in activityStats.slice(0, 8)" :key="activity.id">
+                    <div class="flex items-center gap-3">
+                      <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm"
+                           :style="`background-color: ${activity.color}20; color: ${activity.color}`">
+                        <span x-text="activity.icon"></span>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="text-sm font-medium text-gray-900 dark:text-white" x-text="activity.label"></span>
+                          <span class="text-sm text-gray-600 dark:text-gray-400" x-text="formatDuration(activity.totalSeconds)"></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div class="h-2 rounded-full transition-all"
+                                 :style="`background-color: ${activity.color}; width: ${activity.percentage}%`"></div>
+                          </div>
+                          <span class="text-xs text-gray-500 dark:text-gray-400" x-text="formatPercentage(activity.percentage)"></span>
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <span x-text="activity.entryCount"></span> sessions • 
+                          avg <span x-text="formatDuration(activity.avgSessionDuration)"></span>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+
+            <!-- Daily Patterns -->
+            <template x-if="dailyStats.length > 0 && !loading">
+              <div class="card mb-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  Daily Patterns
+                </h3>
+                
+                <div class="space-y-2">
+                  <template x-for="day in dailyStats.slice(-7)" :key="day.date">
+                    <div class="flex items-center gap-3">
+                      <div class="w-20 text-sm text-gray-600 dark:text-gray-400" x-text="formatDate(day.date)"></div>
+                      <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                          <span class="text-sm font-medium text-gray-900 dark:text-white" x-text="formatDuration(day.totalSeconds)"></span>
+                          <span class="text-xs text-gray-500 dark:text-gray-400" x-text="day.entryCount + ' sessions'"></span>
+                        </div>
+                        <div class="bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                          <div class="h-2 bg-blue-500 rounded-full transition-all" 
+                               :style="`width: ${day.productivity * 100}%`"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+
+            <!-- Hourly Heatmap -->
+            <template x-if="hourlyStats.length > 0 && !loading">
+              <div class="card mb-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  Time of Day Pattern
+                </h3>
+                
+                <div class="grid grid-cols-12 gap-1">
+                  <template x-for="hourStat in hourlyStats" :key="hourStat.hour">
+                    <div class="text-center">
+                      <div class="text-xs text-gray-500 dark:text-gray-400 mb-1" x-show="hourStat.hour % 2 === 0">
+                        <span x-text="hourStat.hour.toString().padStart(2, '0')"></span>
+                      </div>
+                      <div class="w-full h-8 rounded-sm border border-gray-200 dark:border-gray-600 flex items-center justify-center relative group"
+                           :class="hourStat.totalSeconds > 0 ? 'cursor-pointer' : ''"
+                           :style="hourStat.totalSeconds > 0 ? `background-color: rgb(59, 130, 246, ${Math.min(hourStat.totalSeconds / Math.max(...hourlyStats.map(h => h.totalSeconds), 1), 1)})` : ''">
+                        <!-- Tooltip -->
+                        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10"
+                             x-show="hourStat.totalSeconds > 0">
+                          <span x-text="hourStat.hour.toString().padStart(2, '0') + ':00 - ' + formatDuration(hourStat.totalSeconds)"></span>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+                
+                <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  <span>Less active</span>
+                  <span>More active</span>
+                </div>
+              </div>
+            </template>
+
+            <!-- Key Insights -->
+            <template x-if="insights.length > 0 && !loading">
+              <div class="card mb-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  Key Insights
+                </h3>
+                
+                <div class="space-y-3">
+                  <template x-for="insight in insights" :key="insight">
+                    <div class="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <div class="text-blue-600 dark:text-blue-400 text-sm" x-text="insight"></div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+
+            <!-- Empty State -->
+            <template x-if="!loading && !summary">
+              <div class="card text-center py-12">
+                <div class="text-6xl mb-4">📊</div>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  No Data Available
+                </h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-6">
+                  Start tracking your activities to see detailed insights and patterns.
+                </p>
+                <button
+                  @click="$store.app.navigateTo('timer')"
+                  class="btn-primary"
+                >
+                  Start Tracking
+                </button>
+              </div>
+            </template>
+
+          </div>
+        </div>
+
+        <!-- Settings Page -->
+        <div x-show="currentPage === 'settings'" class="container py-6">
+          <div x-data="settings">
+            <div class="space-y-6">
+              
+              <!-- Duration Threshold -->
+              <div class="card">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  Duration Threshold
+                </h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Entries shorter than this will be automatically discarded
+                </p>
+                <div class="flex items-center gap-4">
+                  <select 
+                    x-model.number="durationThreshold"
+                    class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <template x-for="option in thresholdOptions" :key="option.value">
+                      <option :value="option.value" x-text="option.label"></option>
+                    </template>
+                  </select>
+                  <span class="text-sm font-medium text-gray-900 dark:text-white min-w-[60px]" x-text="getThresholdLabel()"></span>
+                </div>
+              </div>
+
+              <!-- Time Rounding/Snap -->
+              <div class="card">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  Time Rounding/Snap
+                </h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Snap timer start/end times to specific intervals for cleaner time tracking
+                </p>
+                <div class="flex items-center gap-4">
+                  <select 
+                    x-model="timeRounding"
+                    class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <template x-for="(option, index) in timeRoundingOptions" :key="'time-' + index">
+                      <option :value="option.value" x-text="option.label"></option>
+                    </template>
+                  </select>
+                  <span class="text-sm font-medium text-gray-900 dark:text-white min-w-[120px]" x-text="getTimeRoundingLabel()"></span>
+                </div>
+              </div>
+
+              <!-- Activity Categories -->
+              <div class="card">
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                    Activity Categories
+                  </h3>
+                  <button
+                    @click="showAdvanced = !showAdvanced"
+                    class="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    <span x-show="!showAdvanced">Advanced</span>
+                    <span x-show="showAdvanced">Simple</span>
+                  </button>
+                </div>
+
+                <!-- Simple Mode: Presets -->
+                <div x-show="!showAdvanced" class="space-y-4">
+                  <p class="text-sm text-gray-600 dark:text-gray-400">
+                    Choose a preset to get started quickly
+                  </p>
+                  <div class="grid grid-cols-1 gap-3">
+                    <template x-for="preset in presets" :key="preset.name">
+                      <button
+                        @click="applyPreset(preset)"
+                        class="text-left p-4 rounded-lg border transition-colors"
+                        :class="currentPreset === preset.name ? 
+                          'border-blue-400 ring-1 ring-blue-300/50 hover:bg-blue-50 dark:hover:bg-blue-900/20' : 
+                          'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'"
+                      >
+                        <div class="font-medium text-gray-900 dark:text-white" x-text="preset.name"></div>
+                        <div class="text-sm text-gray-600 dark:text-gray-400" x-text="preset.description"></div>
+                        <div class="flex gap-2 mt-2">
+                          <template x-for="category in preset.categories" :key="category.id">
+                            <span class="text-lg" x-text="category.icon"></span>
+                          </template>
+                        </div>
+                      </button>
+                    </template>
+                  </div>
+                </div>
+
+                <!-- Advanced Mode: Custom Categories -->
+                <div x-show="showAdvanced" class="space-y-4">
+                  <!-- Column Headers -->
+                  <div class="grid grid-cols-12 gap-3 items-center text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                    <div class="col-span-2 text-center">Icon</div>
+                    <div class="col-span-4">Name</div>
+                    <div class="col-span-2 text-center">Color</div>
+                    <div class="col-span-2 text-center">Max (h)</div>
+                    <div class="col-span-2 text-center">Subcategories</div>
+                    <div class="col-span-1"></div>
+                  </div>
+                  
+                  <template x-for="(category, index) in categories" :key="category.id">
+                    <div class="p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                      <div class="grid grid-cols-12 gap-3 items-center">
+                        <input
+                          type="text"
+                          x-model="category.icon"
+                          placeholder="🔧"
+                          class="col-span-2 input text-center"
+                          maxlength="2"
+                        />
+                        <input
+                          type="text"
+                          x-model="category.label"
+                          placeholder="Category name"
+                          class="col-span-4 input"
+                        />
+                        <input
+                          type="color"
+                          x-model="category.color"
+                          class="col-span-2 h-10 w-full rounded border border-gray-300 dark:border-gray-700"
+                        />
+                        <div class="col-span-2">
+                          <select 
+                            x-model="category.maxDuration"
+                            class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                          >
+                            <template x-for="(option, index) in maxDurationOptions" :key="'max-' + index">
+                              <option :value="option.value" x-text="option.label"></option>
+                            </template>
+                          </select>
+                        </div>
+                        <button
+                          @click="toggleSubcategories(category.id)"
+                          class="col-span-2 btn-secondary text-xs"
+                        >
+                          <span x-show="!category.showSub">+ Subcategories</span>
+                          <span x-show="category.showSub">- Hide</span>
+                        </button>
+                        <button
+                          @click="removeCategory(index)"
+                          class="col-span-1 text-red-600 hover:text-red-700"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      
+                      <!-- Subcategories -->
+                      <div x-show="category.showSub" class="mt-4 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                        <div class="mb-3">
+                          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Subcategories (comma-separated)
+                          </label>
+                          <textarea
+                            x-model="category.subcategoriesText"
+                            @input="updateSubcategories(category)"
+                            placeholder="lunch, coffee break, rest, reading"
+                            class="input"
+                            rows="2"
+                          ></textarea>
+                        </div>
+                        
+                        
+                        <div x-show="category.subcategories.length > 0" class="flex flex-wrap gap-1">
+                          <template x-for="sub in category.subcategories" :key="sub">
+                            <span class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-xs rounded" x-text="sub"></span>
+                          </template>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                  
+                  <button
+                    @click="addCategory()"
+                    class="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
+                  >
+                    + Add Category
+                  </button>
+                </div>
+              </div>
+
+              <!-- Data Export -->
+              <div class="card">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  Export Data
+                </h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Export your time tracking data for backup or analysis
+                </p>
+                
+                <!-- Date Range Filters -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Start Date (optional)
+                    </label>
+                    <input
+                      type="date"
+                      x-model="exportStartDate"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      End Date (optional)
+                    </label>
+                    <input
+                      type="date"
+                      x-model="exportEndDate"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+                
+                <!-- Export Path Configuration -->
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Default Export Directory (optional)
+                  </label>
+                  <div class="flex gap-2">
+                    <input
+                      type="text"
+                      x-model="defaultExportPath"
+                      placeholder="No default directory set - files will prompt for location"
+                      readonly
+                      class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 cursor-not-allowed"
+                    />
+                    <button
+                      type="button"
+                      @click="chooseExportDirectory()"
+                      class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent whitespace-nowrap"
+                    >
+                      📁 Choose
+                    </button>
+                    <button
+                      type="button"
+                      @click="clearExportDirectory()"
+                      x-show="defaultExportPath"
+                      class="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 focus:border-transparent"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    When set, exports will be saved directly to this directory. Leave empty to choose location each time.
+                  </p>
+                </div>
+
+                <!-- Format and Compression Options -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Export Format
+                    </label>
+                    <select 
+                      x-model="exportFormat"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="json">JSON (database backup)</option>
+                      <option value="markdown">Markdown (readable report)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Compression
+                    </label>
+                    <select 
+                      x-model="exportCompression"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="none">None</option>
+                      <option value="zip">ZIP</option>
+                      <option value="gzip">GZIP</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Export Button -->
+                <button
+                  @click="exportData()"
+                  class="w-full btn-primary flex items-center justify-center gap-2"
+                >
+                  <span>📊</span>
+                  <span>Export Data</span>
+                </button>
+
+                <!-- Helper Text -->
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                  Leave dates blank to export all data. JSON format includes complete database backup with settings. Markdown format creates a readable time tracking report.
+                </p>
+              </div>
+
+              <!-- Auto-save indicator and controls -->
+              <div class="card bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <!-- Save status indicator -->
+                    <div class="relative">
+                      <div 
+                        class="w-3 h-3 rounded-full transition-all duration-300"
+                        :class="justSaved ? 'bg-green-500 scale-110' : 'bg-gray-300 dark:bg-gray-600'"
+                      ></div>
+                      <div 
+                        x-show="justSaved"
+                        x-transition:enter="transition ease-out duration-200"
+                        x-transition:enter-start="opacity-0 scale-75"
+                        x-transition:enter-end="opacity-100 scale-100"
+                        x-transition:leave="transition ease-in duration-300"
+                        x-transition:leave-start="opacity-100 scale-100"
+                        x-transition:leave-end="opacity-0 scale-75"
+                        class="absolute inset-0 w-3 h-3 bg-green-500 rounded-full animate-ping"
+                      ></div>
+                    </div>
+                    
+                    <span class="text-sm text-gray-600 dark:text-gray-400">
+                      <span x-show="justSaved" class="text-green-600 dark:text-green-400">Settings saved</span>
+                      <span x-show="!justSaved">Auto-save enabled</span>
+                    </span>
+                  </div>
+                  
+                  <div class="flex items-center gap-3">
+                    <button
+                      @click="cancelChanges()"
+                      x-show="hasChanges()"
+                      class="btn-secondary text-sm px-3 py-1 hover:bg-red-50 hover:border-red-200 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:border-red-700 dark:hover:text-red-400 transition-colors"
+                    >
+                      Cancel Changes
+                    </button>
+                    
+                    <span
+                      @click="$nextTick(() => { if (confirm('Reset all settings to default? This cannot be undone.')) resetToDefaults() })"
+                      class="text-xs text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 cursor-pointer px-2 py-1 rounded transition-colors"
+                    >
+                      Reset All
+                    </span>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
       </div>
 
       <!-- Bottom Navigation -->
-      <nav class="nav">
-        <div class="nav-content">
-          <div
-            @click="currentPage = 'timer'"
-            class="nav-item"
-            :class="{ active: currentPage === 'timer' }"
-          >
-            <div class="nav-icon">⏱️</div>
-            <div class="nav-label">Timer</div>
-          </div>
-          <div
-            @click="currentPage = 'timeline'"
-            class="nav-item"
-            :class="{ active: currentPage === 'timeline' }"
-          >
-            <div class="nav-icon">📊</div>
-            <div class="nav-label">Timeline</div>
-          </div>
-          <div
-            @click="currentPage = 'insights'"
-            class="nav-item"
-            :class="{ active: currentPage === 'insights' }"
-          >
-            <div class="nav-icon">💡</div>
-            <div class="nav-label">Insights</div>
+      <nav
+        class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-40"
+      >
+        <div class="max-w-lg mx-auto px-4">
+          <div class="flex justify-around">
+            <button
+              @click="navigateTo('timer')"
+              class="nav-item"
+              :class="{ 'nav-item-active': currentPage === 'timer' }"
+            >
+              <div class="text-xl mb-1">⏱️</div>
+              <div class="text-xs">Timer</div>
+            </button>
+            <button
+              @click="navigateTo('timeline')"
+              class="nav-item"
+              :class="{ 'nav-item-active': currentPage === 'timeline' }"
+            >
+              <div class="text-xl mb-1">📊</div>
+              <div class="text-xs">Timeline</div>
+            </button>
+            <button
+              @click="navigateTo('insights')"
+              class="nav-item"
+              :class="{ 'nav-item-active': currentPage === 'insights' }"
+            >
+              <div class="text-xl mb-1">💡</div>
+              <div class="text-xs">Insights</div>
+            </button>
+            <button
+              @click="navigateTo('settings')"
+              class="nav-item"
+              :class="{ 'nav-item-active': currentPage === 'settings' }"
+            >
+              <div class="text-xl mb-1">⚙️</div>
+              <div class="text-xs">Settings</div>
+            </button>
           </div>
         </div>
       </nav>
-
-      <!-- Fill Gap Modal -->
-      <div
-        x-show="showFillGapModal"
-        class="modal"
-        @click.self="showFillGapModal = false"
-      >
-        <div class="modal-content">
-          <h2 class="text-xl font-semibold mb-md">What were you doing?</h2>
-          <p class="text-sm text-secondary mb-lg">
-            <span x-text="formatTime(gapStart)"></span> -
-            <span x-text="formatTime(gapEnd)"></span> (<span
-              x-text="formatDuration((gapEnd - gapStart) / 1000)"
-            ></span
-            >)
-          </p>
-
-          <div class="grid grid-2 gap-sm mb-md">
-            <template x-for="activity in activities" :key="activity.id">
-              <button
-                @click="fillGapWithActivity(activity)"
-                class="btn btn-secondary"
-                :style="`border-left: 3px solid ${activity.color}`"
-              >
-                <span x-text="activity.icon"></span>
-                <span x-text="activity.label"></span>
-              </button>
-            </template>
-          </div>
-
-          <!-- Natural language for gap -->
-          <div class="mb-md">
-            <input
-              type="text"
-              x-model="gapNaturalInput"
-              @keydown.enter="fillGapNatural"
-              class="input"
-              placeholder="e.g. work 30m, break, personal 15m"
-            />
-          </div>
-
-          <button
-            @click="showFillGapModal = false"
-            class="btn btn-ghost"
-            style="width: 100%"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-
-      <!-- Edit Entry Modal -->
-      <div
-        x-show="showEditModal"
-        class="modal"
-        @click.self="showEditModal = false"
-      >
-        <div class="modal-content">
-          <h2 class="text-xl font-semibold mb-md">Edit Entry</h2>
-          <div class="mb-md">
-            <p class="text-sm text-secondary mb-sm">
-              <span x-text="editingEntry?.activity"></span>
-            </p>
-            <div class="grid grid-2 gap-sm mb-md">
-              <div>
-                <label class="text-sm text-muted">Start Time</label>
-                <input type="time" x-model="editStartTime" class="input" />
-              </div>
-              <div>
-                <label class="text-sm text-muted">End Time</label>
-                <input type="time" x-model="editEndTime" class="input" />
-              </div>
-            </div>
-
-            <!-- Quick adjust buttons -->
-            <div class="text-center mb-md">
-              <p class="text-sm text-muted mb-sm">Quick Adjust Duration</p>
-              <div class="flex justify-center gap-sm">
-                <button @click="adjustEntry(-10)" class="btn btn-secondary">
-                  -10m
-                </button>
-                <button @click="adjustEntry(-5)" class="btn btn-secondary">
-                  -5m
-                </button>
-                <button @click="adjustEntry(5)" class="btn btn-secondary">
-                  +5m
-                </button>
-                <button @click="adjustEntry(10)" class="btn btn-secondary">
-                  +10m
-                </button>
-              </div>
-            </div>
-
-            <!-- Natural language edit -->
-            <div class="mb-md">
-              <label class="text-sm text-muted">Or type naturally</label>
-              <input
-                type="text"
-                x-model="editNaturalInput"
-                @keydown.enter="updateEntryNatural"
-                class="input"
-                placeholder="e.g. 9:30-10:45 or 45 minutes"
-              />
-            </div>
-          </div>
-
-          <div class="flex gap-sm">
-            <button
-              @click="updateEntry"
-              class="btn btn-primary"
-              style="flex: 1"
-            >
-              Save Changes
-            </button>
-            <button @click="deleteEntry" class="btn btn-danger">Delete</button>
-            <button @click="showEditModal = false" class="btn btn-ghost">
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
 
-    <script>
-      // Database setup
-      const db = new Dexie("TimeTracker");
-      db.version(1).stores({
-        entries: "++id, date, startTime, endTime, activity, duration",
-        settings: "key, value",
-      });
-
-      // Alpine.js app
-      document.addEventListener("alpine:init", () => {
-        Alpine.data("timeTracker", () => ({
-          // State
-          currentPage: "timer",
-          theme: "light",
-          currentActivity: null,
-          startTime: null,
-          elapsed: 0,
-          interval: null,
-          naturalInput: "",
-          todayEntries: [],
-          showFillGapModal: false,
-          showEditModal: false,
-          gapStart: null,
-          gapEnd: null,
-          gapNaturalInput: "",
-          editingEntry: null,
-          editStartTime: "",
-          editEndTime: "",
-          editNaturalInput: "",
-
-          // Predefined activities with aliases
-          activities: [
-            {
-              id: "work",
-              label: "Work",
-              icon: "💼",
-              color: "#6366f1",
-              aliases: ["working", "worked", "coding", "code"],
-            },
-            {
-              id: "break",
-              label: "Break",
-              icon: "☕",
-              color: "#10b981",
-              aliases: ["lunch", "coffee", "rest", "pause"],
-            },
-            {
-              id: "meeting",
-              label: "Meeting",
-              icon: "👥",
-              color: "#f59e0b",
-              aliases: ["call", "standup", "sync"],
-            },
-            {
-              id: "personal",
-              label: "Personal",
-              icon: "🏠",
-              color: "#ec4899",
-              aliases: ["home", "family", "private"],
-            },
-          ],
-
-          // Initialize
-          async init() {
-            // Load theme
-            const savedTheme =
-              localStorage.getItem("theme") ||
-              (window.matchMedia("(prefers-color-scheme: dark)").matches
-                ? "dark"
-                : "light");
-            this.setTheme(savedTheme);
-
-            // Load today's entries
-            await this.loadTodayEntries();
-
-            // Check for running timer
-            const running = localStorage.getItem("runningTimer");
-            if (running) {
-              const data = JSON.parse(running);
-              this.currentActivity = this.activities.find(
-                (a) => a.id === data.activityId
-              );
-              this.startTime = new Date(data.startTime);
-              this.startInterval();
-            }
-          },
-
-          // Theme management
-          toggleTheme() {
-            this.setTheme(this.theme === "dark" ? "light" : "dark");
-          },
-
-          setTheme(theme) {
-            this.theme = theme;
-            document.documentElement.setAttribute("data-theme", theme);
-            localStorage.setItem("theme", theme);
-          },
-
-          // Timer display
-          get displayTime() {
-            const h = Math.floor(this.elapsed / 3600);
-            const m = Math.floor((this.elapsed % 3600) / 60);
-            const s = this.elapsed % 60;
-            return `${String(h).padStart(2, "0")}:${String(m).padStart(
-              2,
-              "0"
-            )}:${String(s).padStart(2, "0")}`;
-          },
-
-          // Today's durations by activity
-          get todayDurations() {
-            const durations = {};
-            this.activities.forEach((a) => (durations[a.id] = 0));
-
-            this.todayEntries.forEach((entry) => {
-              const activityId = this.activities.find(
-                (a) => a.label === entry.activity
-              )?.id;
-              if (activityId && entry.duration) {
-                durations[activityId] =
-                  (durations[activityId] || 0) + entry.duration;
-              }
-            });
-
-            // Add current tracking
-            if (this.currentActivity) {
-              durations[this.currentActivity.id] =
-                (durations[this.currentActivity.id] || 0) + this.elapsed;
-            }
-
-            return durations;
-          },
-
-          // Total time today
-          get totalToday() {
-            let total = this.todayEntries.reduce(
-              (sum, entry) => sum + (entry.duration || 0),
-              0
-            );
-            if (this.currentActivity) {
-              total += this.elapsed;
-            }
-            return total;
-          },
-
-          // Timeline items with gaps
-          get timelineItems() {
-            const items = [];
-            const sorted = [...this.todayEntries].sort(
-              (a, b) => a.startTime - b.startTime
-            );
-
-            // Start of day (8am)
-            const dayStart = new Date();
-            dayStart.setHours(8, 0, 0, 0);
-
-            if (sorted.length === 0) {
-              // No entries yet
-              const now = new Date();
-              if (now > dayStart) {
-                items.push({
-                  type: "gap",
-                  start: dayStart,
-                  end: now,
-                  duration: Math.floor((now - dayStart) / 1000),
-                  timeLabel: this.formatTime(dayStart),
-                });
-              }
-            } else {
-              // Check for gap at start of day
-              if (sorted[0].startTime > dayStart) {
-                items.push({
-                  type: "gap",
-                  start: dayStart,
-                  end: sorted[0].startTime,
-                  duration: Math.floor((sorted[0].startTime - dayStart) / 1000),
-                  timeLabel: this.formatTime(dayStart),
-                });
-              }
-
-              // Add entries and gaps between them
-              sorted.forEach((entry, index) => {
-                // Add the entry
-                items.push({
-                  type: "entry",
-                  entry: {
-                    ...entry,
-                    color:
-                      this.activities.find((a) => a.label === entry.activity)
-                        ?.color || "#94a3b8",
-                  },
-                  timeLabel: this.formatTime(entry.startTime),
-                });
-
-                // Check for gap after this entry
-                if (index < sorted.length - 1) {
-                  const nextEntry = sorted[index + 1];
-                  if (entry.endTime && nextEntry.startTime > entry.endTime) {
-                    const gapDuration = Math.floor(
-                      (nextEntry.startTime - entry.endTime) / 1000
-                    );
-                    if (gapDuration > 60) {
-                      // Only show gaps > 1 minute
-                      items.push({
-                        type: "gap",
-                        start: entry.endTime,
-                        end: nextEntry.startTime,
-                        duration: gapDuration,
-                        timeLabel: this.formatTime(entry.endTime),
-                      });
-                    }
-                  }
-                }
-              });
-
-              // Check for gap at end (to now)
-              const lastEntry = sorted[sorted.length - 1];
-              if (lastEntry.endTime && !this.currentActivity) {
-                const now = new Date();
-                const gapDuration = Math.floor(
-                  (now - lastEntry.endTime) / 1000
-                );
-                if (gapDuration > 60) {
-                  items.push({
-                    type: "gap",
-                    start: lastEntry.endTime,
-                    end: now,
-                    duration: gapDuration,
-                    timeLabel: this.formatTime(lastEntry.endTime),
-                  });
-                }
-              }
-            }
-
-            return items;
-          },
-
-          // Find activity by name or alias
-          findActivity(text) {
-            const lower = text.toLowerCase();
-            for (const activity of this.activities) {
-              if (
-                activity.label.toLowerCase() === lower ||
-                activity.aliases?.some((alias) => lower.includes(alias))
-              ) {
-                return activity;
-              }
-            }
-            return null;
-          },
-
-          // Activity toggle
-          async toggleActivity(activity) {
-            if (this.currentActivity?.id === activity.id) {
-              // Stop current activity
-              await this.stopTracking();
-            } else {
-              // Stop current if any, then start new
-              if (this.currentActivity) {
-                await this.stopTracking();
-              }
-              await this.startTracking(activity);
-            }
-          },
-
-          // Start tracking
-          async startTracking(activity) {
-            this.currentActivity = activity;
-            this.startTime = new Date();
-            this.elapsed = 0;
-
-            // Save to localStorage for recovery
-            localStorage.setItem(
-              "runningTimer",
-              JSON.stringify({
-                activityId: activity.id,
-                startTime: this.startTime,
-              })
-            );
-
-            this.startInterval();
-          },
-
-          // Stop tracking
-          async stopTracking() {
-            if (!this.currentActivity) return;
-
-            const endTime = new Date();
-            const duration = Math.floor((endTime - this.startTime) / 1000);
-
-            // Save entry
-            await this.addEntry({
-              date: this.startTime.toDateString(),
-              startTime: this.startTime,
-              endTime: endTime,
-              activity: this.currentActivity.label,
-              duration: duration,
-            });
-
-            // Reset
-            this.currentActivity = null;
-            this.startTime = null;
-            this.elapsed = 0;
-            this.stopInterval();
-            localStorage.removeItem("runningTimer");
-
-            // Reload entries
-            await this.loadTodayEntries();
-          },
-
-          // Timer interval
-          startInterval() {
-            this.updateElapsed();
-            this.interval = setInterval(() => this.updateElapsed(), 1000);
-          },
-
-          stopInterval() {
-            if (this.interval) {
-              clearInterval(this.interval);
-              this.interval = null;
-            }
-          },
-
-          updateElapsed() {
-            if (this.startTime) {
-              this.elapsed = Math.floor((new Date() - this.startTime) / 1000);
-            }
-          },
-
-          // Advanced natural language parsing
-          async parseNaturalLanguage() {
-            if (!this.naturalInput.trim()) return;
-
-            const lines = this.naturalInput
-              .split(",")
-              .map((line) => line.trim());
-            const today = new Date();
-            const entries = [];
-            let lastEndTime = null;
-
-            // Check if all entries are durations only
-            const allDurations = lines.every((line) => {
-              return (
-                !line.match(/\d{1,2}:?\d{0,2}\s*-\s*\d{1,2}:?\d{0,2}/) &&
-                !line.match(/till|until|to\s+\d/i) &&
-                line.match(/\d+\s*(h|hr|hour|m|min)/i)
-              );
-            });
-
-            if (allDurations) {
-              // Stack durations backward from now
-              const now = new Date();
-              let currentTime = now;
-
-              // Process in reverse to stack backward from now
-              for (let i = lines.length - 1; i >= 0; i--) {
-                const line = lines[i];
-                const parsed = this.parseSingleEntry(line, today, lastEndTime);
-                if (parsed) {
-                  // It's a duration
-                  const endTime = new Date(currentTime);
-                  const startTime = new Date(
-                    endTime.getTime() - parsed.duration * 1000
-                  );
-
-                  entries.unshift({
-                    ...parsed,
-                    startTime,
-                    endTime,
-                    duration: parsed.duration,
-                  });
-
-                  currentTime = startTime;
-                }
-              }
-            } else {
-              // Process sequentially
-              for (const line of lines) {
-                const parsed = this.parseSingleEntry(line, today, lastEndTime);
-                if (parsed) {
-                  entries.push(parsed);
-                  lastEndTime = parsed.endTime;
-                }
-              }
-            }
-
-            // Add all entries with overlap handling
-            for (const entry of entries) {
-              await this.addEntry(entry);
-            }
-
-            // Clear input and reload
-            this.naturalInput = "";
-            await this.loadTodayEntries();
-          },
-
-          // Parse a single entry from natural language
-          parseSingleEntry(line, baseDate, previousEndTime) {
-            let activity = null;
-            let startTime = null;
-            let endTime = null;
-            let duration = null;
-
-            // Find activity
-            activity = this.findActivity(line);
-            if (!activity) {
-              // Default to first word as potential activity
-              const firstWord = line.split(/\s+/)[0];
-              activity = this.findActivity(firstWord);
-            }
-
-            if (!activity) return null; // Can't determine activity
-
-            // Parse "till" or "until" patterns
-            const tillMatch = line.match(
-              /(?:till|until|to)\s+(\d{1,2}):?(\d{0,2})\s*(am|pm)?/i
-            );
-            if (tillMatch) {
-              // Start from previous end time or now
-              startTime = previousEndTime || new Date();
-
-              let endHour = parseInt(tillMatch[1]);
-              let endMin = parseInt(tillMatch[2] || "0");
-              const period = tillMatch[3];
-
-              if (period?.toLowerCase() === "pm" && endHour < 12) endHour += 12;
-
-              endTime = new Date(baseDate);
-              endTime.setHours(endHour, endMin, 0, 0);
-
-              duration = Math.floor((endTime - startTime) / 1000);
-            }
-
-            // Parse time range (e.g., "9-12", "2:30-3:45pm")
-            const rangeMatch = line.match(
-              /(\d{1,2}):?(\d{0,2})\s*-\s*(\d{1,2}):?(\d{0,2})\s*(am|pm)?/i
-            );
-            if (rangeMatch && !tillMatch) {
-              let startHour = parseInt(rangeMatch[1]);
-              let startMin = parseInt(rangeMatch[2] || "0");
-              let endHour = parseInt(rangeMatch[3]);
-              let endMin = parseInt(rangeMatch[4] || "0");
-              const period = rangeMatch[5];
-
-              // Adjust for PM
-              if (period?.toLowerCase() === "pm") {
-                if (endHour < 12) endHour += 12;
-                if (startHour < endHour && startHour < 12) startHour += 12;
-              }
-
-              startTime = new Date(baseDate);
-              startTime.setHours(startHour, startMin, 0, 0);
-
-              endTime = new Date(baseDate);
-              endTime.setHours(endHour, endMin, 0, 0);
-
-              duration = Math.floor((endTime - startTime) / 1000);
-            }
-
-            // Parse duration (e.g., "30min", "1h", "20m")
-            const durationMatch = line.match(
-              /(\d+\.?\d*)\s*(h|hr|hour|m|min)/i
-            );
-            if (durationMatch && !rangeMatch && !tillMatch) {
-              const value = parseFloat(durationMatch[1]);
-              const unit = durationMatch[2].toLowerCase();
-
-              if (unit.startsWith("h")) {
-                duration = Math.floor(value * 3600);
-              } else {
-                duration = Math.floor(value * 60);
-              }
-
-              if (previousEndTime) {
-                // Start from previous end time
-                startTime = new Date(previousEndTime);
-                endTime = new Date(startTime.getTime() + duration * 1000);
-              } else {
-                // Will be handled by the calling function
-                // For now, just return duration
-              }
-            }
-
-            // Return parsed entry
-            if ((startTime && endTime) || duration) {
-              return {
-                date: baseDate.toDateString(),
-                startTime: startTime,
-                endTime: endTime,
-                activity: activity.label,
-                duration: duration,
-              };
-            }
-
-            return null;
-          },
-
-          // Add entry with overlap handling
-          async addEntry(entry) {
-            // Check for overlaps
-            const overlapping = this.todayEntries.filter((existing) => {
-              if (!entry.startTime || !entry.endTime) return false;
-              return (
-                existing.startTime < entry.endTime &&
-                existing.endTime > entry.startTime
-              );
-            });
-
-            // Handle overlaps
-            for (const overlap of overlapping) {
-              if (
-                entry.startTime <= overlap.startTime &&
-                entry.endTime >= overlap.endTime
-              ) {
-                // New entry completely covers existing - delete existing
-                await db.entries.delete(overlap.id);
-              } else if (
-                entry.startTime > overlap.startTime &&
-                entry.endTime < overlap.endTime
-              ) {
-                // New entry splits existing - create two entries
-                await db.entries.update(overlap.id, {
-                  endTime: entry.startTime,
-                  duration: Math.floor(
-                    (entry.startTime - overlap.startTime) / 1000
-                  ),
-                });
-                await db.entries.add({
-                  ...overlap,
-                  id: undefined,
-                  startTime: entry.endTime,
-                  duration: Math.floor(
-                    (overlap.endTime - entry.endTime) / 1000
-                  ),
-                });
-              } else if (entry.startTime <= overlap.startTime) {
-                // New entry overlaps start - shrink existing
-                await db.entries.update(overlap.id, {
-                  startTime: entry.endTime,
-                  duration: Math.floor(
-                    (overlap.endTime - entry.endTime) / 1000
-                  ),
-                });
-              } else {
-                // New entry overlaps end - shrink existing
-                await db.entries.update(overlap.id, {
-                  endTime: entry.startTime,
-                  duration: Math.floor(
-                    (entry.startTime - overlap.startTime) / 1000
-                  ),
-                });
-              }
-            }
-
-            // Add the new entry
-            await db.entries.add(entry);
-            await this.loadTodayEntries();
-          },
-
-          // Fill gap
-          fillGap(start, end) {
-            this.gapStart = start;
-            this.gapEnd = end;
-            this.gapNaturalInput = "";
-            this.showFillGapModal = true;
-          },
-
-          async fillGapWithActivity(activity) {
-            const duration = Math.floor((this.gapEnd - this.gapStart) / 1000);
-
-            await this.addEntry({
-              date: this.gapStart.toDateString(),
-              startTime: this.gapStart,
-              endTime: this.gapEnd,
-              activity: activity.label,
-              duration: duration,
-            });
-
-            this.showFillGapModal = false;
-            await this.loadTodayEntries();
-          },
-
-          // Fill gap with natural language
-          async fillGapNatural() {
-            if (!this.gapNaturalInput.trim()) return;
-
-            const lines = this.gapNaturalInput
-              .split(",")
-              .map((line) => line.trim());
-            const entries = [];
-            let currentTime = this.gapStart;
-            const gapDuration = (this.gapEnd - this.gapStart) / 1000;
-
-            // Parse all entries
-            for (const line of lines) {
-              const activity = this.findActivity(line);
-              if (!activity) continue;
-
-              const durationMatch = line.match(/(\d+)\s*(m|min|h|hr)?/i);
-              let duration = null;
-
-              if (durationMatch) {
-                const value = parseInt(durationMatch[1]);
-                const unit = durationMatch[2]?.toLowerCase() || "m";
-                duration = unit.startsWith("h") ? value * 3600 : value * 60;
-              }
-
-              entries.push({ activity: activity.label, duration });
-            }
-
-            // Distribute time
-            if (entries.length > 0) {
-              const specifiedDuration = entries.reduce(
-                (sum, e) => sum + (e.duration || 0),
-                0
-              );
-              const unspecifiedCount = entries.filter(
-                (e) => !e.duration
-              ).length;
-              const remainingTime = gapDuration - specifiedDuration;
-              const defaultDuration =
-                unspecifiedCount > 0 ? remainingTime / unspecifiedCount : 0;
-
-              for (const entry of entries) {
-                const duration = entry.duration || defaultDuration;
-                const startTime = new Date(currentTime);
-                const endTime = new Date(
-                  currentTime.getTime() + duration * 1000
-                );
-
-                await this.addEntry({
-                  date: startTime.toDateString(),
-                  startTime: startTime,
-                  endTime: endTime,
-                  activity: entry.activity,
-                  duration: duration,
-                });
-
-                currentTime = endTime;
-              }
-            }
-
-            this.showFillGapModal = false;
-            await this.loadTodayEntries();
-          },
-
-          // Load today's entries
-          async loadTodayEntries() {
-            const today = new Date().toDateString();
-            this.todayEntries = await db.entries
-              .where("date")
-              .equals(today)
-              .toArray();
-          },
-
-          // Edit entry
-          editEntry(entry) {
-            this.editingEntry = entry;
-            this.editStartTime = this.formatTimeForInput(entry.startTime);
-            this.editEndTime = this.formatTimeForInput(entry.endTime);
-            this.editNaturalInput = "";
-            this.showEditModal = true;
-          },
-
-          // Format time for input[type=time]
-          formatTimeForInput(date) {
-            if (!date) return "";
-            const d = new Date(date);
-            const hours = String(d.getHours()).padStart(2, "0");
-            const minutes = String(d.getMinutes()).padStart(2, "0");
-            return `${hours}:${minutes}`;
-          },
-
-          // Adjust entry duration
-          adjustEntry(minutes) {
-            if (!this.editingEntry) return;
-
-            const start = new Date(this.editingEntry.startTime);
-            const end = new Date(this.editingEntry.endTime);
-            end.setMinutes(end.getMinutes() + minutes);
-
-            this.editEndTime = this.formatTimeForInput(end);
-          },
-
-          // Update entry from natural language
-          async updateEntryNatural() {
-            if (!this.editNaturalInput.trim() || !this.editingEntry) return;
-
-            const input = this.editNaturalInput.trim();
-
-            // Parse time range
-            const rangeMatch = input.match(
-              /(\d{1,2}):?(\d{0,2})\s*-\s*(\d{1,2}):?(\d{0,2})/
-            );
-            if (rangeMatch) {
-              const startHour = parseInt(rangeMatch[1]);
-              const startMin = parseInt(rangeMatch[2] || "0");
-              const endHour = parseInt(rangeMatch[3]);
-              const endMin = parseInt(rangeMatch[4] || "0");
-
-              this.editStartTime = `${String(startHour).padStart(
-                2,
-                "0"
-              )}:${String(startMin).padStart(2, "0")}`;
-              this.editEndTime = `${String(endHour).padStart(2, "0")}:${String(
-                endMin
-              ).padStart(2, "0")}`;
-            }
-
-            // Parse duration
-            const durationMatch = input.match(/(\d+)\s*(m|min|h|hour)/i);
-            if (durationMatch && !rangeMatch) {
-              const value = parseInt(durationMatch[1]);
-              const unit = durationMatch[2].toLowerCase();
-              const minutes = unit.startsWith("h") ? value * 60 : value;
-
-              const start = new Date(this.editingEntry.startTime);
-              const end = new Date(start.getTime() + minutes * 60 * 1000);
-              this.editEndTime = this.formatTimeForInput(end);
-            }
-
-            await this.updateEntry();
-          },
-
-          // Update entry
-          async updateEntry() {
-            if (!this.editingEntry) return;
-
-            const [startHour, startMin] = this.editStartTime
-              .split(":")
-              .map(Number);
-            const [endHour, endMin] = this.editEndTime.split(":").map(Number);
-
-            const startTime = new Date(this.editingEntry.startTime);
-            startTime.setHours(startHour, startMin, 0, 0);
-
-            const endTime = new Date(this.editingEntry.endTime);
-            endTime.setHours(endHour, endMin, 0, 0);
-
-            const duration = Math.floor((endTime - startTime) / 1000);
-
-            await db.entries.update(this.editingEntry.id, {
-              startTime: startTime,
-              endTime: endTime,
-              duration: duration,
-            });
-
-            this.showEditModal = false;
-            await this.loadTodayEntries();
-          },
-
-          // Delete entry
-          async deleteEntry() {
-            if (!this.editingEntry) return;
-
-            if (confirm("Delete this entry?")) {
-              await db.entries.delete(this.editingEntry.id);
-              this.showEditModal = false;
-              await this.loadTodayEntries();
-            }
-          },
-
-          // Export functions
-          async exportDatabase() {
-            const blob = await db.export();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `timetracker-backup-${
-              new Date().toISOString().split("T")[0]
-            }.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-          },
-
-          async exportToday() {
-            const today = new Date().toDateString();
-            let markdown = `# Time Tracking - ${today}\n\n`;
-
-            markdown += `## Summary\n`;
-            markdown += `- Total tracked: ${this.formatDuration(
-              this.totalToday
-            )}\n`;
-            markdown += `- Entries: ${this.todayEntries.length}\n\n`;
-
-            markdown += `## By Activity\n`;
-            for (const activity of this.activities) {
-              const duration = this.todayDurations[activity.id];
-              if (duration > 0) {
-                markdown += `- ${activity.icon} ${
-                  activity.label
-                }: ${this.formatDuration(duration)}\n`;
-              }
-            }
-
-            markdown += `\n## Timeline\n`;
-            for (const entry of this.todayEntries.sort(
-              (a, b) => a.startTime - b.startTime
-            )) {
-              markdown += `- ${this.formatTime(
-                entry.startTime
-              )} - ${this.formatTime(entry.endTime)}: ${
-                entry.activity
-              } (${this.formatDuration(entry.duration)})\n`;
-            }
-
-            const blob = new Blob([markdown], { type: "text/markdown" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `timetracker-${today.replace(/\s/g, "-")}.md`;
-            a.click();
-            URL.revokeObjectURL(url);
-          },
-
-          // Formatting helpers
-          formatTime(date) {
-            if (!date) return "";
-            return new Date(date).toLocaleTimeString("en-US", {
-              hour: "numeric",
-              minute: "2-digit",
-            });
-          },
-
-          formatDuration(seconds) {
-            if (seconds < 60) return `${seconds}s`;
-            if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-            const h = Math.floor(seconds / 3600);
-            const m = Math.floor((seconds % 3600) / 60);
-            return `${h}h${m > 0 ? " " + m + "m" : ""}`;
-          },
-
-          hexToRgb(hex) {
-            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(
-              hex
-            );
-            return result
-              ? `${parseInt(result[1], 16)}, ${parseInt(
-                  result[2],
-                  16
-                )}, ${parseInt(result[3], 16)}`
-              : "0, 0, 0";
-          },
-        }));
-      });
-    </script>
+    <!-- App entry -->
   </body>
 </html>
