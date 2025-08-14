@@ -46,8 +46,8 @@
       href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
       rel="stylesheet"
     />
-    <script type="module" crossorigin src="/assets/main-DmeASQMP.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/main-TCPcyR0v.css">
+    <script type="module" crossorigin src="/assets/main-D9O-0MtM.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/main-DI0-TDfk.css">
   </head>
 
   <body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
@@ -1098,6 +1098,311 @@
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
                   Leave dates blank to export all data. JSON format includes complete database backup with settings. Markdown format creates a readable time tracking report.
                 </p>
+              </div>
+
+              <!-- Settings Export -->
+              <div class="card">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  Export Settings
+                </h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Export your application settings configuration for backup or sharing
+                </p>
+                
+                <!-- Format Selection -->
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Export Format
+                  </label>
+                  <select 
+                    x-model="settingsExportFormat"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="yaml">YAML (most human-friendly)</option>
+                    <option value="json">JSON (structured data)</option>
+                    <option value="toml">TOML (configuration format)</option>
+                    <option value="txt">Text (summary report)</option>
+                  </select>
+                </div>
+
+                <!-- Export Button -->
+                <button
+                  @click="exportSettings()"
+                  class="w-full btn-secondary flex items-center justify-center gap-2"
+                >
+                  <span>⚙️</span>
+                  <span>Export Settings</span>
+                </button>
+
+                <!-- Helper Text -->
+                <div class="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                  <p class="mb-1"><strong>YAML:</strong> Best for manual editing and version control</p>
+                  <p class="mb-1"><strong>JSON:</strong> Best for programmatic access and tools</p>
+                  <p class="mb-1"><strong>TOML:</strong> Great for configuration management</p>
+                  <p><strong>Text:</strong> Human-readable summary with import instructions</p>
+                </div>
+              </div>
+
+              <!-- Settings Import -->
+              <div class="card">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                  Import Settings
+                </h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Restore settings from a previously exported file (YAML, JSON, or TOML)
+                </p>
+                
+                <!-- File Selection -->
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Select Settings File
+                  </label>
+                  <input 
+                    type="file"
+                    id="settings-import-file"
+                    accept=".yaml,.yml,.json,.toml"
+                    @change="handleImportFileSelection($event)"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-300"
+                  />
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Supports YAML (.yaml, .yml), JSON (.json), and TOML (.toml) files
+                  </p>
+                </div>
+
+                <!-- Import Preview -->
+                <div x-show="showImportPreview" x-transition class="mb-4">
+                  <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
+                    <div class="flex items-center gap-2 mb-3">
+                      <span class="text-blue-600 dark:text-blue-400">📋</span>
+                      <h4 class="font-medium text-blue-900 dark:text-blue-100">
+                        Preview: <span x-text="settingsImportFormat"></span> Format
+                      </h4>
+                    </div>
+                    
+                    <!-- Validation Status -->
+                    <div class="mb-3" x-show="settingsImportValidation">
+                      <div x-show="settingsImportValidation && settingsImportValidation.isValid" class="flex items-center gap-2 text-green-700 dark:text-green-300">
+                        <span>✅</span>
+                        <span class="text-sm">Settings file is valid and ready to import</span>
+                      </div>
+                      <div x-show="settingsImportValidation && !settingsImportValidation.isValid" class="flex items-center gap-2 text-red-700 dark:text-red-300">
+                        <span>❌</span>
+                        <span class="text-sm">Settings file has validation errors</span>
+                      </div>
+                      
+                      <!-- Errors -->
+                      <div x-show="settingsImportValidation && settingsImportValidation.errors && settingsImportValidation.errors.length > 0" class="mt-2">
+                        <p class="text-sm font-medium text-red-700 dark:text-red-300">Errors:</p>
+                        <ul class="text-xs text-red-600 dark:text-red-400 ml-4 mt-1">
+                          <template x-for="error in settingsImportValidation.errors" :key="error">
+                            <li class="list-disc" x-text="error"></li>
+                          </template>
+                        </ul>
+                      </div>
+                      
+                      <!-- Warnings -->
+                      <div x-show="settingsImportValidation && settingsImportValidation.warnings && settingsImportValidation.warnings.length > 0" class="mt-2">
+                        <p class="text-sm font-medium text-yellow-700 dark:text-yellow-300">Warnings:</p>
+                        <ul class="text-xs text-yellow-600 dark:text-yellow-400 ml-4 mt-1">
+                          <template x-for="warning in settingsImportValidation.warnings" :key="warning">
+                            <li class="list-disc" x-text="warning"></li>
+                          </template>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <!-- Settings Preview -->
+                    <div x-show="settingsImportPreview" class="mb-3">
+                      <p class="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">Settings to import:</p>
+                      <div class="text-xs text-blue-800 dark:text-blue-200 space-y-1">
+                        <div x-show="settingsImportPreview && settingsImportPreview.timeRounding !== undefined">
+                          <strong>Time Rounding:</strong> 
+                          <span x-text="settingsImportPreview.timeRounding === null ? 'No rounding' : (settingsImportPreview.timeRounding + 's')"></span>
+                        </div>
+                        <div x-show="settingsImportPreview && settingsImportPreview.durationThreshold !== undefined">
+                          <strong>Duration Threshold:</strong> 
+                          <span x-text="settingsImportPreview.durationThreshold + 's'"></span>
+                        </div>
+                        <div x-show="settingsImportPreview && settingsImportPreview.categories && settingsImportPreview.categories.length > 0">
+                          <strong>Categories:</strong> 
+                          <span x-text="settingsImportPreview.categories.length + ' categories'"></span>
+                          <div class="ml-4 mt-1">
+                            <template x-for="category in settingsImportPreview.categories" :key="category.id">
+                              <div class="flex items-center gap-1">
+                                <span x-text="category.icon"></span>
+                                <span x-text="category.label"></span>
+                                <span x-show="category.subcategories && category.subcategories.length > 0" 
+                                      class="text-xs opacity-75"
+                                      x-text="'(' + category.subcategories.length + ' subcategories)'"></span>
+                              </div>
+                            </template>
+                          </div>
+                        </div>
+                        <div x-show="settingsImportPreview && settingsImportPreview.defaultExportPath">
+                          <strong>Default Export Path:</strong> 
+                          <span x-text="settingsImportPreview.defaultExportPath"></span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Import Actions -->
+                    <div class="flex gap-2 pt-2 border-t border-blue-200 dark:border-blue-800">
+                      <button
+                        @click="importSettings('replace')"
+                        :disabled="settingsImportValidation && !settingsImportValidation.isValid"
+                        class="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Import & Replace
+                      </button>
+                      <button
+                        @click="cancelImport()"
+                        class="btn-secondary text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    
+                    <p class="text-xs text-blue-700 dark:text-blue-300 mt-2">
+                      <strong>Replace:</strong> All current settings will be replaced with imported settings
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Import Helper Text -->
+                <div x-show="!showImportPreview" class="text-xs text-gray-500 dark:text-gray-400">
+                  <p class="mb-2"><strong>Import Process:</strong></p>
+                  <ol class="list-decimal list-inside space-y-1 ml-2">
+                    <li>Select a settings file exported from this application</li>
+                    <li>Preview the settings to ensure they're correct</li>
+                    <li>Choose to replace your current settings</li>
+                    <li>The application will automatically reload with imported settings</li>
+                  </ol>
+                  <p class="mt-3 text-yellow-600 dark:text-yellow-400">
+                    <strong>⚠️ Warning:</strong> Importing will replace your current settings. Consider exporting your current settings first as a backup.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Settings Backups -->
+              <div class="card">
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                    Settings Backups
+                  </h3>
+                  <button
+                    @click="showBackups = !showBackups"
+                    class="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    <span x-show="!showBackups">Show Backups</span>
+                    <span x-show="showBackups">Hide Backups</span>
+                  </button>
+                </div>
+                
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Automatic backups are created before imports. You can also create manual backups and restore previous settings.
+                </p>
+
+                <!-- Backup Summary -->
+                <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">
+                  <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    <span>🔒</span>
+                    <span x-text="settingsBackups.length === 0 ? 'No backups available' : 
+                                  settingsBackups.length === 1 ? '1 backup available' : 
+                                  settingsBackups.length + ' backups available (max 3)'">
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Create Manual Backup Button -->
+                <button
+                  @click="createManualBackup()"
+                  class="w-full btn-secondary flex items-center justify-center gap-2 mb-4"
+                >
+                  <span>💾</span>
+                  <span>Create Manual Backup</span>
+                </button>
+
+                <!-- Backups List -->
+                <div x-show="showBackups" x-transition class="space-y-3">
+                  <!-- No backups message -->
+                  <div x-show="settingsBackups.length === 0" class="text-center py-6 text-gray-500 dark:text-gray-400">
+                    <div class="text-2xl mb-2">📦</div>
+                    <p class="text-sm">No backups available yet</p>
+                    <p class="text-xs">Backups will be created automatically when you import settings</p>
+                  </div>
+
+                  <!-- Backups list -->
+                  <template x-for="backup in settingsBackups" :key="backup.id">
+                    <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                      <div class="flex items-start justify-between mb-2">
+                        <div class="flex-1">
+                          <div class="flex items-center gap-2 mb-1">
+                            <span x-text="getBackupSourceIcon(backup.source)"></span>
+                            <h4 class="font-medium text-gray-900 dark:text-white text-sm" 
+                                x-text="formatBackupDescription(backup)">
+                            </h4>
+                          </div>
+                          <div class="text-xs text-gray-500 dark:text-gray-400">
+                            <span x-text="backup.settings.categories ? backup.settings.categories.length : 0"></span> categories •
+                            <span x-text="backup.settings.durationThreshold || 'N/A'"></span>s threshold •
+                            <span x-text="backup.settings.timeRounding === null ? 'No rounding' : 
+                                         backup.settings.timeRounding === undefined ? 'Default' :
+                                         backup.settings.timeRounding + 's rounding'"></span>
+                          </div>
+                        </div>
+                        <div class="flex gap-1 ml-2">
+                          <button
+                            @click="restoreFromBackup(backup.id)"
+                            class="text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 rounded transition-colors"
+                            title="Restore this backup"
+                          >
+                            Restore
+                          </button>
+                          <button
+                            @click="deleteBackup(backup.id)"
+                            class="text-xs px-2 py-1 bg-red-100 hover:bg-red-200 dark:bg-red-900 dark:hover:bg-red-800 text-red-700 dark:text-red-300 rounded transition-colors"
+                            title="Delete this backup"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <!-- Backup categories preview -->
+                      <div x-show="backup.settings.categories && backup.settings.categories.length > 0" class="mt-2">
+                        <div class="flex gap-1 flex-wrap">
+                          <template x-for="category in backup.settings.categories.slice(0, 6)" :key="category.id">
+                            <span class="text-xs bg-white dark:bg-gray-700 px-2 py-1 rounded border border-gray-200 dark:border-gray-600 flex items-center gap-1">
+                              <span x-text="category.icon"></span>
+                              <span x-text="category.label"></span>
+                            </span>
+                          </template>
+                          <span x-show="backup.settings.categories.length > 6" 
+                                class="text-xs text-gray-500 dark:text-gray-400 px-2 py-1"
+                                x-text="'+ ' + (backup.settings.categories.length - 6) + ' more'">
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+
+                  <!-- Clear all backups button -->
+                  <div x-show="settingsBackups.length > 0" class="pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <button
+                      @click="clearAllBackups()"
+                      class="text-xs text-red-600 dark:text-red-400 hover:underline"
+                    >
+                      Clear All Backups
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Helper text -->
+                <div x-show="!showBackups" class="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                  <p><strong>Automatic Backups:</strong> Created before each settings import (max 3 kept)</p>
+                  <p><strong>Manual Backups:</strong> Create snapshots of current settings anytime</p>
+                  <p><strong>Restore:</strong> Revert to any backup - current settings will be backed up first</p>
+                </div>
               </div>
 
               <!-- Auto-save indicator and controls -->
